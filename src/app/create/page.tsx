@@ -117,7 +117,7 @@ export default function CreatePage() {
         .map(toId => ({ from_id: topicId, to_id: toId }))
 
       if (relations.length > 0) {
-        await supabase.from('topic_relations').upsert(relations, { onConflict: 'from_id,to_id' })
+        await supabase.from('topic_relations').insert(relations, { ignoreDuplicates: true })
       }
 
       router.push(`/posts/${post.id}`)

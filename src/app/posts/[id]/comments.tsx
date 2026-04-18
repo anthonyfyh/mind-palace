@@ -27,7 +27,7 @@ export function Comments({ postId, initialComments, userId }: {
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { setSubmitting(false); return }
 
     const { data, error } = await supabase
       .from('comments')
