@@ -32,7 +32,7 @@ create table topics (
   title       text not null,
   description text,
   subject_id  integer references subjects(id),
-  created_by  uuid references profiles(id),
+  created_by  uuid not null references profiles(id),
   created_at  timestamptz default now()
 );
 
@@ -41,8 +41,8 @@ create table topics (
 -- type: solution | framework | concept | process
 create table posts (
   id          uuid primary key default uuid_generate_v4(),
-  topic_id    uuid references topics(id) on delete cascade,
-  author_id   uuid references profiles(id) on delete cascade,
+  topic_id    uuid not null references topics(id) on delete cascade,
+  author_id   uuid not null references profiles(id) on delete cascade,
   type        text not null check (type in ('solution', 'framework', 'concept', 'process')),
   title       text not null,
   content     jsonb not null default '[]',
@@ -90,8 +90,8 @@ create table follows (
 -- ─── COMMENTS ────────────────────────────────────────────────────────────────
 create table comments (
   id          uuid primary key default uuid_generate_v4(),
-  post_id     uuid references posts(id) on delete cascade,
-  author_id   uuid references profiles(id) on delete cascade,
+  post_id     uuid not null references posts(id) on delete cascade,
+  author_id   uuid not null references profiles(id) on delete cascade,
   body        text not null,
   created_at  timestamptz default now()
 );
@@ -111,9 +111,9 @@ create policy "Public profiles are viewable by everyone" on profiles for select 
 create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = id);
 create policy "Users can update their own profile" on profiles for update using (auth.uid() = id);
 
--- Topics: public read, authenticated create
+-- Topics: public read, authenticated create — creator must match auth.uid()
 create policy "Topics are viewable by everyone" on topics for select using (true);
-create policy "Authenticated users can create topics" on topics for insert with check (auth.role() = 'authenticated');
+create policy "Authenticated users can create topics" on topics for insert with check (auth.uid() = created_by);
 
 -- Posts: published posts are public; drafts only visible to author
 create policy "Published posts are viewable by everyone" on posts for select using (is_draft = false or author_id = auth.uid());
@@ -142,9 +142,9 @@ create policy "Follows are viewable by everyone" on follows for select using (tr
 create policy "Users can follow others" on follows for insert with check (auth.uid() = follower_id);
 create policy "Users can unfollow" on follows for delete using (auth.uid() = follower_id);
 
--- Comments: public read, authenticated write
+-- Comments: public read, authenticated write — author must match auth.uid()
 create policy "Comments are viewable by everyone" on comments for select using (true);
-create policy "Authenticated users can comment" on comments for insert with check (auth.role() = 'authenticated');
+create policy "Authenticated users can comment" on comments for insert with check (auth.uid() = author_id);
 create policy "Authors can delete their own comments" on comments for delete using (auth.uid() = author_id);
 
 -- ─── AUTO-CREATE PROFILE ON SIGNUP ──────────────────────────────────────────

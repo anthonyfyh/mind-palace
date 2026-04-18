@@ -26,9 +26,12 @@ export function Comments({ postId, initialComments, userId }: {
     setSubmitting(true)
 
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const { data, error } = await supabase
       .from('comments')
-      .insert({ post_id: postId, body: body.trim() })
+      .insert({ post_id: postId, author_id: user.id, body: body.trim() })
       .select(`id, body, created_at, author:profiles(username, display_name)`)
       .single()
 

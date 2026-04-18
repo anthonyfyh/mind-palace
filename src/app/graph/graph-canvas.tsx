@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import ForceGraph2D from 'react-force-graph-2d'
 
@@ -27,6 +27,21 @@ type Link = {
 export function GraphCanvas({ nodes, links }: { nodes: Node[]; links: Link[] }) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null)
+
+  useEffect(() => {
+    function measure() {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        })
+      }
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
 
   const getNodeColor = useCallback((node: Node) => {
     return SUBJECT_COLORS[node.subjectSlug] ?? '#a3a3a3'
@@ -44,19 +59,16 @@ export function GraphCanvas({ nodes, links }: { nodes: Node[]; links: Link[] }) 
     const size = getNodeSize(node)
     const color = getNodeColor(node)
 
-    // Glow
     ctx.beginPath()
     ctx.arc(node.x, node.y, size + 3, 0, 2 * Math.PI)
     ctx.fillStyle = color + '30'
     ctx.fill()
 
-    // Node
     ctx.beginPath()
     ctx.arc(node.x, node.y, size, 0, 2 * Math.PI)
     ctx.fillStyle = color
     ctx.fill()
 
-    // Label
     ctx.font = '3px Inter, sans-serif'
     ctx.fillStyle = '#e5e5e5'
     ctx.textAlign = 'center'
@@ -65,19 +77,21 @@ export function GraphCanvas({ nodes, links }: { nodes: Node[]; links: Link[] }) 
 
   return (
     <div ref={containerRef} className="w-full h-full">
-      <ForceGraph2D
-        graphData={{ nodes, links }}
-        backgroundColor="#0a0a0a"
-        nodeCanvasObject={paintNode as never}
-        nodeCanvasObjectMode={() => 'replace'}
-        onNodeClick={handleNodeClick as never}
-        linkColor={() => '#333333'}
-        linkWidth={1}
-        nodeLabel={(node) => (node as Node).title}
-        cooldownTicks={100}
-        width={containerRef.current?.clientWidth ?? window.innerWidth}
-        height={containerRef.current?.clientHeight ?? window.innerHeight - 56}
-      />
+      {dimensions && (
+        <ForceGraph2D
+          graphData={{ nodes, links }}
+          backgroundColor="#0a0a0a"
+          nodeCanvasObject={paintNode as never}
+          nodeCanvasObjectMode={() => 'replace'}
+          onNodeClick={handleNodeClick as never}
+          linkColor={() => '#333333'}
+          linkWidth={1}
+          nodeLabel={(node) => (node as Node).title}
+          cooldownTicks={100}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+      )}
     </div>
   )
 }

@@ -45,6 +45,8 @@ export default function CreatePage() {
   }, [])
 
   useEffect(() => {
+    setSelectedTopicId('')
+    setExistingTopics([])
     if (topicMode !== 'existing' || !subjectId) return
     supabase
       .from('topics')

@@ -26,8 +26,10 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Redirect unauthenticated users away from protected routes
-  const protectedPaths = ['/create', '/profile']
-  const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
+  // /profile/[username] is public — only /profile/edit and similar sub-routes are protected
+  const pathname = request.nextUrl.pathname
+  const protectedPaths = ['/create', '/profile/edit']
+  const isProtected = protectedPaths.some(p => pathname.startsWith(p))
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
