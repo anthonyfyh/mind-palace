@@ -68,21 +68,31 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         {/* Header */}
         <h1 className="text-3xl font-semibold tracking-tight mb-3">{post.title}</h1>
 
-        <div className="flex items-center gap-2 text-sm text-neutral-400 mb-8">
-          <span>by</span>
-          <Link
-            href={`/profile/${post.author?.username}`}
-            className="text-neutral-700 hover:text-neutral-900 transition-colors"
-          >
-            {post.author?.display_name ?? post.author?.username}
-          </Link>
-          <span>·</span>
-          <span>{new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-          {post.is_draft && (
-            <>
-              <span>·</span>
-              <span className="text-amber-500">Draft</span>
-            </>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2 text-sm text-neutral-400">
+            <span>by</span>
+            <Link
+              href={`/profile/${post.author?.username}`}
+              className="text-neutral-700 hover:text-neutral-900 transition-colors"
+            >
+              {post.author?.display_name ?? post.author?.username}
+            </Link>
+            <span>·</span>
+            <span>{new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            {post.is_draft && (
+              <>
+                <span>·</span>
+                <span className="text-amber-500">Draft</span>
+              </>
+            )}
+          </div>
+          {user?.id === post.author?.id && (
+            <Link
+              href={`/posts/${id}/edit`}
+              className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
+            >
+              Edit
+            </Link>
           )}
         </div>
 
