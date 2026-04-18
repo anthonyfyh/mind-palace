@@ -7,9 +7,10 @@ import { Nav } from '@/components/nav'
 import { Editor } from '@/components/editor'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { extractMentionIds } from '@/lib/extract-mentions'
 
 type Subject = { id: number; name: string; slug: string }
-type ExistingTopic = { id: string; title: string }
+type Topic = { id: string; title: string }
 
 const POST_TYPES = [
   { value: 'solution', label: 'Solution', description: 'A direct answer to a specific problem' },
@@ -23,7 +24,8 @@ export default function CreatePage() {
   const supabase = createClient()
 
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [existingTopics, setExistingTopics] = useState<ExistingTopic[]>([])
+  const [allTopics, setAllTopics] = useState<Topic[]>([])
+  const [existingTopics, setExistingTopics] = useState<Topic[]>([])
 
   const [topicMode, setTopicMode] = useState<'new' | 'existing'>('new')
   const [selectedTopicId, setSelectedTopicId] = useState<string>('')
@@ -41,6 +43,9 @@ export default function CreatePage() {
   useEffect(() => {
     supabase.from('subjects').select('*').order('name').then(({ data }) => {
       if (data) setSubjects(data)
+    })
+    supabase.from('topics').select('id, title').order('title').then(({ data }) => {
+      if (data) setAllTopics(data)
     })
   }, [])
 
@@ -104,6 +109,16 @@ export default function CreatePage() {
         .single()
 
       if (postError) throw postError
+
+      // Extract mentions and save topic relations
+      const mentionedTopicIds = extractMentionIds(postContent as Parameters<typeof extractMentionIds>[0])
+      const relations = mentionedTopicIds
+        .filter(id => id !== topicId)
+        .map(toId => ({ from_id: topicId, to_id: toId }))
+
+      if (relations.length > 0) {
+        await supabase.from('topic_relations').upsert(relations, { onConflict: 'from_id,to_id' })
+      }
 
       router.push(`/posts/${post.id}`)
     } catch (err: unknown) {
@@ -260,7 +275,8 @@ export default function CreatePage() {
             <Label>Content</Label>
             <Editor
               onChange={setPostContent}
-              placeholder="Share your thinking. Use headings to structure, bullet points for steps, and code blocks for formulas."
+              topics={allTopics}
+              placeholder="Share your thinking. Type [ to link to another topic."
             />
           </div>
         </section>
