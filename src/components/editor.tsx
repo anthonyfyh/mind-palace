@@ -85,9 +85,9 @@ export function Editor({ content, onChange, placeholder = 'Write your explanatio
   })
 
   return (
-    <div className="border border-neutral-200 rounded-md px-4 py-3 focus-within:border-neutral-400 transition-colors">
+    <div>
       {editor && (
-        <div className="flex gap-1 mb-3 pb-3 border-b border-neutral-100 flex-wrap">
+        <div className="flex gap-1 mb-4 flex-wrap">
           <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')}>B</ToolbarButton>
           <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')}><em>i</em></ToolbarButton>
           <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })}>H2</ToolbarButton>
