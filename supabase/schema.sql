@@ -155,15 +155,66 @@ create policy "Comments are viewable by everyone" on comments for select using (
 create policy "Authenticated users can comment" on comments for insert with check (auth.uid() = author_id);
 create policy "Authors can delete their own comments" on comments for delete using (auth.uid() = author_id);
 
+-- ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+-- type: new_contribution (someone posted to a topic you created)
+--       new_comment      (someone commented on your post)
+create table notifications (
+  id         uuid primary key default uuid_generate_v4(),
+  user_id    uuid not null references profiles(id) on delete cascade,
+  actor_id   uuid not null references profiles(id) on delete cascade,
+  type       text not null check (type in ('new_contribution', 'new_comment')),
+  post_id    uuid references posts(id) on delete cascade,
+  topic_id   uuid references topics(id) on delete cascade,
+  read       boolean not null default false,
+  created_at timestamptz default now()
+);
+
+alter table notifications enable row level security;
+
+create policy "Users can view their own notifications" on notifications
+  for select using (auth.uid() = user_id);
+
+create policy "Authenticated users can insert notifications" on notifications
+  for insert with check (auth.uid() = actor_id);
+
+create policy "Users can update their own notifications" on notifications
+  for update using (auth.uid() = user_id);
+
+-- ─── STORAGE: AVATARS BUCKET ─────────────────────────────────────────────────
+-- Run this in the Supabase dashboard SQL editor (storage schema is managed by Supabase):
+--
+--   insert into storage.buckets (id, name, public)
+--   values ('avatars', 'avatars', true)
+--   on conflict do nothing;
+--
+--   create policy "Anyone can view avatars" on storage.objects
+--     for select using (bucket_id = 'avatars');
+--
+--   create policy "Authenticated users can upload their own avatar" on storage.objects
+--     for insert with check (bucket_id = 'avatars' and auth.uid()::text = split_part(name, '.', 1));
+--
+--   create policy "Users can update their own avatar" on storage.objects
+--     for update using (bucket_id = 'avatars' and auth.uid()::text = split_part(name, '.', 1));
+
 -- ─── AUTO-CREATE PROFILE ON SIGNUP ──────────────────────────────────────────
+-- Captures avatar_url and full_name from Google OAuth metadata when available.
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, username, display_name)
+  insert into public.profiles (id, username, display_name, avatar_url)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1))
+    coalesce(
+      new.raw_user_meta_data->>'preferred_username',
+      new.raw_user_meta_data->>'user_name',
+      split_part(new.email, '@', 1)
+    ),
+    coalesce(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1)
+    ),
+    new.raw_user_meta_data->>'avatar_url'
   );
   return new;
 end;
