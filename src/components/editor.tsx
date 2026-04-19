@@ -1,6 +1,7 @@
 'use client'
 
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react'
+import { useRef, useEffect } from 'react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
@@ -18,6 +19,9 @@ interface EditorProps {
 }
 
 export function Editor({ content, onChange, placeholder = 'Write your explanation…', topics = [] }: EditorProps) {
+  const topicsRef = useRef(topics)
+  useEffect(() => { topicsRef.current = topics }, [topics])
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -31,7 +35,7 @@ export function Editor({ content, onChange, placeholder = 'Write your explanatio
         suggestion: {
           char: '[',
           items({ query }) {
-            return topics
+            return topicsRef.current
               .filter(t => t.title.toLowerCase().includes(query.toLowerCase()))
               .slice(0, 8)
           },

@@ -51,14 +51,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               </h1>
               <p className="text-sm text-neutral-400 mt-0.5">@{profile.username}</p>
             </div>
-            {isOwner && (
+            <div className="flex gap-2">
               <Link
-                href="/profile/edit"
+                href={`/profile/${profile.username}/graph`}
                 className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
               >
-                Edit profile
+                View graph
               </Link>
-            )}
+              {isOwner && (
+                <Link
+                  href="/profile/edit"
+                  className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
+                >
+                  Edit profile
+                </Link>
+              )}
+            </div>
           </div>
           {profile.bio && (
             <p className="mt-4 text-neutral-600 max-w-xl">{profile.bio}</p>

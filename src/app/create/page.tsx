@@ -90,6 +90,10 @@ export default function CreatePage() {
 
         if (error) throw error
         topicId = data.id
+
+        // Refresh mention list so the new topic is immediately available
+        const { data: refreshed } = await supabase.from('topics').select('id, title').order('title')
+        if (refreshed) setAllTopics(refreshed)
       }
 
       if (!topicId) throw new Error('Please select or create a topic')
