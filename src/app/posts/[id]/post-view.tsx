@@ -8,6 +8,7 @@ import { Editor } from '@/components/editor'
 import { PostContent } from './post-content'
 import { Comments } from './comments'
 import { LikeButton } from '@/components/like-button'
+import { BookmarkButton } from '@/components/bookmark-button'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractMentionIds } from '@/lib/extract-mentions'
@@ -47,13 +48,25 @@ type Comment = {
 
 type Topic = { id: string; title: string }
 
-export function PostView({ post, comments, userId, allTopics, likeCount, initialLiked }: {
+type RelatedPost = {
+  id: string; title: string; type: string
+  author: { username: string; display_name: string | null } | null
+  likes?: { count: number }[]
+}
+
+const TYPE_LABELS_MAP: Record<string, string> = {
+  solution: 'Solution', framework: 'Framework', concept: 'Concept', process: 'Process',
+}
+
+export function PostView({ post, comments, userId, allTopics, likeCount, initialLiked, initialBookmarked, relatedPosts }: {
   post: Post
   comments: Comment[]
   userId: string | null
   allTopics: Topic[]
   likeCount: number
   initialLiked: boolean
+  initialBookmarked: boolean
+  relatedPosts: RelatedPost[]
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -193,6 +206,7 @@ export function PostView({ post, comments, userId, allTopics, likeCount, initial
             </div>
             <div className="flex items-center gap-3">
               <LikeButton postId={post.id} initialCount={likeCount} initialLiked={initialLiked} userId={userId} />
+              <BookmarkButton postId={post.id} userId={userId} initialBookmarked={initialBookmarked} />
               {isAuthor && (
                 <button
                   onClick={() => setEditing(true)}
@@ -206,6 +220,38 @@ export function PostView({ post, comments, userId, allTopics, likeCount, initial
 
           <PostContent content={content} />
           <Comments postId={post.id} initialComments={comments} userId={userId} />
+
+          {relatedPosts.length > 0 && (
+            <div className="mt-12 pt-8 border-t border-neutral-100">
+              <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-4">
+                Other takes on this topic
+              </h2>
+              <div className="flex flex-col gap-3">
+                {relatedPosts.map(rp => (
+                  <Link
+                    key={rp.id}
+                    href={`/posts/${rp.id}`}
+                    className="flex items-start justify-between gap-4 border border-neutral-200 rounded-lg px-4 py-3 hover:border-neutral-400 transition-colors"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
+                          {TYPE_LABELS_MAP[rp.type] ?? rp.type}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-neutral-900">{rp.title}</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        by {rp.author?.display_name ?? rp.author?.username}
+                      </p>
+                    </div>
+                    {(rp.likes?.[0]?.count ?? 0) > 0 && (
+                      <span className="text-xs text-neutral-400 shrink-0 mt-0.5">♥ {rp.likes![0].count}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </main>

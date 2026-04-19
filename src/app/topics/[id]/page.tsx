@@ -3,6 +3,27 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { TopicHeader } from './topic-header'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: topic } = await supabase
+    .from('topics')
+    .select('title, subject:subjects(name)')
+    .eq('id', id)
+    .single()
+
+  if (!topic) return {}
+  const subject = (topic.subject as { name: string } | null)
+  const description = `Explore multiple perspectives on ${topic.title}${subject ? ` in ${subject.name}` : ''} — Mind Palace`
+  return {
+    title: `${topic.title} — Mind Palace`,
+    description,
+    openGraph: { title: topic.title, description, images: [{ url: '/logo.png', width: 1080, height: 1080 }] },
+    twitter: { card: 'summary', title: topic.title, description, images: ['/logo.png'] },
+  }
+}
 
 const TYPE_LABELS: Record<string, string> = {
   solution:  'Solution',

@@ -5,6 +5,27 @@ import { Nav } from '@/components/nav'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/avatar'
 import { FollowButton } from '@/components/follow-button'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, bio')
+    .eq('username', username)
+    .single()
+
+  if (!profile) return {}
+  const name = profile.display_name ?? username
+  const description = profile.bio ?? `${name}'s contributions on Mind Palace`
+  return {
+    title: `${name} (@${username}) — Mind Palace`,
+    description,
+    openGraph: { title: `${name} on Mind Palace`, description, images: [{ url: '/logo.png', width: 1080, height: 1080 }] },
+    twitter: { card: 'summary', title: `${name} on Mind Palace`, description, images: ['/logo.png'] },
+  }
+}
 
 const TYPE_LABELS: Record<string, string> = {
   solution:  'Solution',
@@ -64,7 +85,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   if (!profile) notFound()
 
-  const [{ data: posts }, { data: { user } }, { data: collections }, { count: followerCount }] = await Promise.all([
+  const [{ data: posts }, { data: { user } }, { data: collections }, { count: followerCount }, { data: bookmarkedPosts }] = await Promise.all([
     supabase
       .from('posts')
       .select('id, title, type, created_at, is_draft, topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug)), likes(count)')
@@ -77,6 +98,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       .eq('author_id', profile.id)
       .order('created_at', { ascending: false }),
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+    supabase
+      .from('bookmarks')
+      .select('post:posts(id, title, type, topic:topics!posts_topic_id_fkey(title))')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
   const isOwner = user?.id === profile.id
@@ -293,6 +320,35 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                       {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── BOOKMARKS (owner only) ── */}
+        {isOwner && (bookmarkedPosts ?? []).length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">Bookmarks</h2>
+            <div className="flex flex-col gap-3">
+              {(bookmarkedPosts ?? []).map((b: {
+                post: { id: string; title: string; type: string; topic: { title: string } | null } | null
+              }) => b.post && (
+                <Link
+                  key={b.post.id}
+                  href={`/posts/${b.post.id}`}
+                  className="flex items-center justify-between gap-4 border border-neutral-200 rounded-lg px-5 py-3 hover:border-neutral-400 transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
+                        {TYPE_LABELS[b.post.type] ?? b.post.type}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-neutral-900">{b.post.title}</p>
+                    {b.post.topic && <p className="text-xs text-neutral-400 mt-0.5">on: {b.post.topic.title}</p>}
+                  </div>
+                  <span className="text-neutral-300 shrink-0">→</span>
                 </Link>
               ))}
             </div>

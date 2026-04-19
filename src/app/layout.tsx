@@ -7,6 +7,17 @@ const geist = Geist({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Mind Palace",
   description: "A depository of intellectual work. Discover unique ways people explain ideas.",
+  openGraph: {
+    title: "Mind Palace",
+    description: "A depository of intellectual work. Discover unique ways people explain ideas.",
+    images: [{ url: '/logo.png', width: 1080, height: 1080 }],
+  },
+  twitter: {
+    card: 'summary',
+    title: "Mind Palace",
+    description: "A depository of intellectual work. Discover unique ways people explain ideas.",
+    images: ['/logo.png'],
+  },
 };
 
 export default function RootLayout({
