@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/avatar'
+import { FollowButton } from '@/components/follow-button'
 
 const TYPE_LABELS: Record<string, string> = {
   solution:  'Solution',
@@ -63,7 +64,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   if (!profile) notFound()
 
-  const [{ data: posts }, { data: { user } }, { data: collections }] = await Promise.all([
+  const [{ data: posts }, { data: { user } }, { data: collections }, { count: followerCount }] = await Promise.all([
     supabase
       .from('posts')
       .select('id, title, type, created_at, is_draft, topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug)), likes(count)')
@@ -75,9 +76,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       .select('id, title, description, is_draft, subject:subjects(name), collection_posts(count)')
       .eq('author_id', profile.id)
       .order('created_at', { ascending: false }),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
   ])
 
   const isOwner = user?.id === profile.id
+
+  const { data: followRow } = user && !isOwner
+    ? await supabase.from('follows').select('follower_id').eq('follower_id', user.id).eq('following_id', profile.id).maybeSingle()
+    : { data: null }
 
   const published = (posts ?? []).filter(p => !p.is_draft).map(p => ({
     ...p,
@@ -135,7 +141,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             >
               Mind map
             </Link>
-            {isOwner && (
+            {isOwner ? (
               <>
                 <Link href="/create">
                   <Button size="sm">+ Post</Button>
@@ -147,6 +153,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                   <Button variant="outline" size="sm">Edit profile</Button>
                 </Link>
               </>
+            ) : (
+              <FollowButton
+                targetId={profile.id}
+                currentUserId={user?.id ?? null}
+                initialFollowing={!!followRow}
+                initialCount={followerCount ?? 0}
+              />
             )}
           </div>
 

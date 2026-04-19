@@ -71,6 +71,9 @@ export function Nav() {
 
   const navLinks = (
     <>
+      {user && (
+        <Link href="/feed" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Feed</Link>
+      )}
       <Link href="/browse" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Browse</Link>
       <Link href="/graph" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Mind map</Link>
       {user && (
@@ -168,6 +171,9 @@ export function Nav() {
             />
             <Button type="submit" size="sm">Go</Button>
           </form>
+          {user && (
+            <Link href="/feed" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Feed</Link>
+          )}
           <Link href="/browse" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Browse</Link>
           <Link href="/graph" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Mind map</Link>
           {user ? (
