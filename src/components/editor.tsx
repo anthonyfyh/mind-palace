@@ -7,6 +7,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
 import tippy, { type Instance } from 'tippy.js'
 import { MentionList, type MentionListHandle } from './mention-list'
+import { MermaidExtension } from './mermaid-node'
 import 'tippy.js/dist/tippy.css'
 
 type Topic = { id: string; title: string }
@@ -30,11 +31,16 @@ export function Editor({ content, onChange, placeholder = 'Write your explanatio
 
   const [aiLoading, setAiLoading] = useState<string | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [diagramOpen, setDiagramOpen] = useState(false)
+  const [diagramDesc, setDiagramDesc] = useState('')
+  const [diagramLoading, setDiagramLoading] = useState(false)
+  const [diagramError, setDiagramError] = useState<string | null>(null)
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
+      MermaidExtension,
       Placeholder.configure({ placeholder }),
       Mention.configure({
         HTMLAttributes: { class: 'topic-mention' },
@@ -92,6 +98,35 @@ export function Editor({ content, onChange, placeholder = 'Write your explanatio
       onChange?.(editor.getJSON())
     },
   })
+
+  async function handleDiagram(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editor || !diagramDesc.trim()) return
+    setDiagramLoading(true)
+    setDiagramError(null)
+
+    const res = await fetch('/api/diagram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: diagramDesc }),
+    })
+    const json = await res.json()
+
+    if (!res.ok || json.error) {
+      setDiagramError(json.error ?? 'Something went wrong.')
+      setDiagramLoading(false)
+      return
+    }
+
+    editor.chain().focus().insertContent({
+      type: 'mermaidDiagram',
+      attrs: { code: json.code },
+    }).run()
+
+    setDiagramDesc('')
+    setDiagramOpen(false)
+    setDiagramLoading(false)
+  }
 
   async function handleAiAction(action: string) {
     if (!editor) return
@@ -153,9 +188,48 @@ export function Editor({ content, onChange, placeholder = 'Write your explanatio
             </button>
           ))}
 
+          {/* Diagram button */}
+          <button
+            type="button"
+            title="Insert AI-generated diagram"
+            onClick={() => { setDiagramOpen(o => !o); setDiagramError(null) }}
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors text-violet-600 hover:bg-violet-50 hover:text-violet-800"
+          >
+            <DiagramIcon />
+            Diagram
+          </button>
+
           <span className="ml-auto text-xs text-neutral-300 self-center">type [ to link a topic</span>
         </div>
       )}
+
+      {diagramOpen && (
+        <form onSubmit={handleDiagram} className="flex gap-2 mb-3">
+          <input
+            autoFocus
+            value={diagramDesc}
+            onChange={e => setDiagramDesc(e.target.value)}
+            placeholder="Describe your diagram… e.g. 'how a user signs up and gets onboarded'"
+            className="flex-1 border border-violet-200 rounded-md px-3 py-1.5 text-sm outline-none focus:border-violet-400 transition-colors"
+          />
+          <button
+            type="submit"
+            disabled={diagramLoading || !diagramDesc.trim()}
+            className="text-xs px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+          >
+            {diagramLoading ? 'Generating…' : 'Generate'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setDiagramOpen(false); setDiagramDesc('') }}
+            className="text-xs px-2 py-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            Cancel
+          </button>
+        </form>
+      )}
+
+      {diagramError && <p className="text-xs text-red-500 mb-2">{diagramError}</p>}
 
       {aiError && (
         <p className="text-xs text-red-500 mb-2">{aiError}</p>
@@ -183,6 +257,18 @@ function SparkleIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3l1.88 5.76a1 1 0 0 0 .95.69H21l-4.94 3.59a1 1 0 0 0-.36 1.12L17.59 20 12 16.41 6.41 20l1.89-5.84a1 1 0 0 0-.36-1.12L3 9.45h6.17a1 1 0 0 0 .95-.69L12 3z" />
+    </svg>
+  )
+}
+
+function DiagramIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="6" height="6" rx="1" />
+      <rect x="15" y="15" width="6" height="6" rx="1" />
+      <rect x="15" y="3" width="6" height="6" rx="1" />
+      <path d="M9 6h3a3 3 0 0 1 3 3v3" />
+      <line x1="18" y1="9" x2="18" y2="15" />
     </svg>
   )
 }

@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Mention from '@tiptap/extension-mention'
+import { MermaidExtension } from '@/components/mermaid-node'
 import { useRouter } from 'next/navigation'
 
 export function PostContent({ content }: { content: object }) {
@@ -12,6 +13,7 @@ export function PostContent({ content }: { content: object }) {
     immediatelyRender: false,
     extensions: [
       StarterKit,
+      MermaidExtension,
       Mention.configure({
         HTMLAttributes: {
           class: 'topic-mention',
