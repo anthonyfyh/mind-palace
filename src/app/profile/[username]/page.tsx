@@ -63,13 +63,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   if (!profile) notFound()
 
-  const [{ data: posts }, { data: { user } }] = await Promise.all([
+  const [{ data: posts }, { data: { user } }, { data: collections }] = await Promise.all([
     supabase
       .from('posts')
       .select('id, title, type, created_at, is_draft, topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug)), likes(count)')
       .eq('author_id', profile.id)
       .order('created_at', { ascending: false }),
     supabase.auth.getUser(),
+    supabase
+      .from('collections')
+      .select('id, title, description, is_draft, subject:subjects(name), collection_posts(count)')
+      .eq('author_id', profile.id)
+      .order('created_at', { ascending: false }),
   ])
 
   const isOwner = user?.id === profile.id
@@ -133,7 +138,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             {isOwner && (
               <>
                 <Link href="/create">
-                  <Button size="sm">+ Create</Button>
+                  <Button size="sm">+ Post</Button>
+                </Link>
+                <Link href="/collections/new">
+                  <Button variant="outline" size="sm">+ Collection</Button>
                 </Link>
                 <Link href="/profile/edit">
                   <Button variant="outline" size="sm">Edit profile</Button>
@@ -159,6 +167,45 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             <span className="ml-auto text-xs text-neutral-400">Joined {memberSince}</span>
           </div>
         </div>
+
+        {/* ── COLLECTIONS ── */}
+        {((collections ?? []).filter(c => !c.is_draft || isOwner)).length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Collections</h2>
+              {isOwner && (
+                <Link href="/collections/new" className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors">+ New</Link>
+              )}
+            </div>
+            <div className="flex flex-col gap-3">
+              {(collections ?? []).filter(c => !c.is_draft || isOwner).map((c: {
+                id: string; title: string; description: string | null; is_draft: boolean
+                subject: { name: string } | null
+                collection_posts?: { count: number }[]
+              }) => (
+                <Link
+                  key={c.id}
+                  href={`/collections/${c.id}`}
+                  className="block border border-neutral-200 rounded-xl px-5 py-4 hover:border-neutral-400 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        {c.subject && <span className="text-xs text-neutral-400">{c.subject.name}</span>}
+                        {c.is_draft && <span className="text-xs text-amber-500">Draft</span>}
+                      </div>
+                      <h3 className="text-base font-medium text-neutral-900">{c.title}</h3>
+                      {c.description && <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{c.description}</p>}
+                    </div>
+                    <span className="shrink-0 text-xs text-neutral-400 mt-0.5">
+                      {c.collection_posts?.[0]?.count ?? 0} posts
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── TOPICS CONTRIBUTED TO ── */}
         {contributedTopics.length > 0 && (
