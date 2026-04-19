@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { TopicHeader } from './topic-header'
+import { TopicDigest } from '@/components/topic-digest'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -130,6 +131,9 @@ export default async function TopicPage({
             </div>
           )}
         </div>
+
+        {/* AI Digest */}
+        <TopicDigest topicId={id} postCount={allPosts?.length ?? 0} />
 
         {/* Header row: filter tabs + CTA */}
         <div className="flex items-center justify-between mb-5">
