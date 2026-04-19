@@ -17,6 +17,7 @@ const SUBJECT_ORDER = ['Productivity', 'Personal Finance', 'Career', 'Economics'
 type PostRow = {
   id: string; title: string; type: string; created_at: string; is_draft: boolean
   topic: { id: string; title: string; subject: { name: string; slug: string } | null } | null
+  likeCount?: number
 }
 
 function PostCard({ post }: { post: PostRow }) {
@@ -37,9 +38,14 @@ function PostCard({ post }: { post: PostRow }) {
             <p className="text-xs text-neutral-400 mt-1">on: {post.topic.title}</p>
           )}
         </div>
-        <span className="shrink-0 text-xs text-neutral-400 mt-0.5">
-          {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </span>
+        <div className="shrink-0 flex flex-col items-end gap-1">
+          <span className="text-xs text-neutral-400">
+            {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
+          {!!post.likeCount && (
+            <span className="text-xs text-neutral-400">♥ {post.likeCount}</span>
+          )}
+        </div>
       </div>
     </Link>
   )
@@ -60,7 +66,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const [{ data: posts }, { data: { user } }] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, title, type, created_at, is_draft, topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug))')
+      .select('id, title, type, created_at, is_draft, topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug)), likes(count)')
       .eq('author_id', profile.id)
       .order('created_at', { ascending: false }),
     supabase.auth.getUser(),
@@ -68,7 +74,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const isOwner = user?.id === profile.id
 
-  const published = (posts ?? []).filter(p => !p.is_draft) as PostRow[]
+  const published = (posts ?? []).filter(p => !p.is_draft).map(p => ({
+    ...p,
+    likeCount: (p as unknown as { likes?: { count: number }[] }).likes?.[0]?.count ?? 0,
+  })) as PostRow[]
   const drafts = (posts ?? []).filter(p => p.is_draft) as PostRow[]
 
   // Group published posts by subject

@@ -98,6 +98,14 @@ create table comments (
   created_at  timestamptz default now()
 );
 
+-- ─── LIKES ───────────────────────────────────────────────────────────────────
+create table likes (
+  post_id    uuid not null references posts(id) on delete cascade,
+  user_id    uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (post_id, user_id)
+);
+
 -- ─── ROW LEVEL SECURITY ──────────────────────────────────────────────────────
 alter table profiles enable row level security;
 alter table topics enable row level security;
@@ -107,6 +115,7 @@ alter table collection_posts enable row level security;
 alter table topic_relations enable row level security;
 alter table follows enable row level security;
 alter table comments enable row level security;
+alter table likes enable row level security;
 
 -- Profiles: public read, owner write
 create policy "Public profiles are viewable by everyone" on profiles for select using (true);
@@ -154,6 +163,11 @@ create policy "Users can unfollow" on follows for delete using (auth.uid() = fol
 create policy "Comments are viewable by everyone" on comments for select using (true);
 create policy "Authenticated users can comment" on comments for insert with check (auth.uid() = author_id);
 create policy "Authors can delete their own comments" on comments for delete using (auth.uid() = author_id);
+
+-- Likes: public read, users can like/unlike their own rows
+create policy "Likes are viewable by everyone" on likes for select using (true);
+create policy "Authenticated users can like" on likes for insert with check (auth.uid() = user_id);
+create policy "Users can unlike" on likes for delete using (auth.uid() = user_id);
 
 -- ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
 -- type: new_contribution (someone posted to a topic you created)

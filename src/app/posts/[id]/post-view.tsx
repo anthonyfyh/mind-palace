@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Editor } from '@/components/editor'
 import { PostContent } from './post-content'
 import { Comments } from './comments'
+import { LikeButton } from '@/components/like-button'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractMentionIds } from '@/lib/extract-mentions'
@@ -46,11 +47,13 @@ type Comment = {
 
 type Topic = { id: string; title: string }
 
-export function PostView({ post, comments, userId, allTopics }: {
+export function PostView({ post, comments, userId, allTopics, likeCount, initialLiked }: {
   post: Post
   comments: Comment[]
   userId: string | null
   allTopics: Topic[]
+  likeCount: number
+  initialLiked: boolean
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -188,14 +191,17 @@ export function PostView({ post, comments, userId, allTopics }: {
               <span>{new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               {post.is_draft && <><span>·</span><span className="text-amber-500">Draft</span></>}
             </div>
-            {isAuthor && (
-              <button
-                onClick={() => setEditing(true)}
-                className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
-              >
-                Edit
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              <LikeButton postId={post.id} initialCount={likeCount} initialLiked={initialLiked} userId={userId} />
+              {isAuthor && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
 
           <PostContent content={content} />

@@ -7,7 +7,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: post }, { data: comments }, { data: { user } }, { data: allTopics }] = await Promise.all([
+  const [{ data: post }, { data: comments }, { data: { user } }, { data: allTopics }, { count: likeCount }] = await Promise.all([
     supabase
       .from('posts')
       .select(`*, author:profiles(id, username, display_name), topic:topics!posts_topic_id_fkey(id, title, description, subject:subjects(name, slug))`)
@@ -20,9 +20,15 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       .order('created_at', { ascending: false }),
     supabase.auth.getUser(),
     supabase.from('topics').select('id, title').order('title'),
+    supabase.from('likes').select('*', { count: 'exact', head: true }).eq('post_id', id),
   ])
 
   if (!post) notFound()
+
+  const userId = user?.id ?? null
+  const { data: myLike } = userId
+    ? await supabase.from('likes').select('user_id').eq('post_id', id).eq('user_id', userId).maybeSingle()
+    : { data: null }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -30,8 +36,10 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       <PostView
         post={post}
         comments={comments ?? []}
-        userId={user?.id ?? null}
+        userId={userId}
         allTopics={allTopics ?? []}
+        likeCount={likeCount ?? 0}
+        initialLiked={!!myLike}
       />
     </div>
   )
