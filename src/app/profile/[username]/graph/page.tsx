@@ -16,17 +16,25 @@ export default async function ProfileGraphPage({ params }: { params: Promise<{ u
 
   if (!profile) notFound()
 
-  // Topics this creator has contributed to (written at least one post on)
-  const { data: contributedTopics } = await supabase
-    .from('topics')
-    .select(`
-      id, title,
-      subject:subjects(slug),
-      posts!inner(count)
-    `)
-    .eq('posts.author_id', profile.id)
+  // Get topic IDs where this user has written at least one post
+  const { data: authorPosts } = await supabase
+    .from('posts')
+    .select('topic_id')
+    .eq('author_id', profile.id)
 
-  const topicIds = (contributedTopics ?? []).map((t: { id: string }) => t.id)
+  const topicIds = [...new Set((authorPosts ?? []).map((p: { topic_id: string }) => p.topic_id))]
+
+  const { data: contributedTopics } = topicIds.length > 0
+    ? await supabase
+        .from('topics')
+        .select('id, title, subject:subjects(slug)')
+        .in('id', topicIds)
+    : { data: [] }
+
+  const postCountByTopic = (authorPosts ?? []).reduce((acc: Record<string, number>, p: { topic_id: string }) => {
+    acc[p.topic_id] = (acc[p.topic_id] ?? 0) + 1
+    return acc
+  }, {})
 
   // Relations where both ends are in this creator's topic set
   const { data: relations } = topicIds.length > 0
@@ -41,12 +49,11 @@ export default async function ProfileGraphPage({ params }: { params: Promise<{ u
     id: string
     title: string
     subject: { slug: string } | null
-    posts: { count: number }[]
   }) => ({
     id: t.id,
     title: t.title,
     subjectSlug: t.subject?.slug ?? 'other',
-    postCount: t.posts?.[0]?.count ?? 0,
+    postCount: postCountByTopic[t.id] ?? 0,
   }))
 
   const seen = new Set<string>()

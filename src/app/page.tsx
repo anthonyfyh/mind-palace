@@ -19,7 +19,7 @@ export default async function Home() {
     .select(`
       id, title,
       subject:subjects(name, slug),
-      posts(count)
+      posts!posts_topic_id_fkey(count)
     `)
     .order('created_at', { ascending: false })
     .limit(6)

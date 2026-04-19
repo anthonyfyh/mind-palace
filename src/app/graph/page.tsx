@@ -11,7 +11,7 @@ export default async function GraphPage() {
       .select(`
         id, title,
         subject:subjects(slug),
-        posts(count)
+        posts!posts_topic_id_fkey(count)
       `),
     supabase
       .from('topic_relations')

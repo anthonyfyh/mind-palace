@@ -1,14 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import type { User } from '@supabase/supabase-js'
 
 export function Nav() {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [username, setUsername] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const supabase = createClient()
@@ -46,6 +50,15 @@ export function Nav() {
     return () => subscription.unsubscribe()
   }, [])
 
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchOpen(false)
+      setSearchQuery('')
+    }
+  }
+
   return (
     <header className="border-b border-neutral-100">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -54,6 +67,32 @@ export function Nav() {
         </Link>
 
         <nav className="flex items-center gap-4">
+          {searchOpen ? (
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)}
+                placeholder="Search…"
+                className="border border-neutral-200 rounded-md px-3 py-1.5 text-sm outline-none focus:border-neutral-400 transition-colors w-48"
+              />
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="text-xs text-neutral-400 hover:text-neutral-600"
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
+            >
+              Search
+            </button>
+          )}
           <Link href="/browse" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
             Browse
           </Link>

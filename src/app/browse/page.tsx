@@ -22,7 +22,7 @@ export default async function BrowsePage({
         .from('topics')
         .select(`
           id, title, description,
-          posts(count)
+          posts!posts_topic_id_fkey(count)
         `)
         .eq('subject_id', activeSubject.id)
         .order('created_at', { ascending: false })

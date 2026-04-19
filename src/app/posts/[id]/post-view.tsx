@@ -77,13 +77,16 @@ export function PostView({ post, comments, userId, allTopics }: {
       if (updateError) throw updateError
 
       // Delete this post's existing edges, then re-insert from current content
-      await supabase.from('topic_relations').delete().eq('post_id', post.id)
+      const { error: deleteError } = await supabase.from('topic_relations').delete().eq('post_id', post.id)
+      if (deleteError) throw deleteError
+
       const mentionedIds = extractMentionIds(content)
       const relations = mentionedIds
         .filter(id => id !== post.topic_id)
         .map(toId => ({ post_id: post.id, from_id: post.topic_id, to_id: toId }))
       if (relations.length > 0) {
-        await supabase.from('topic_relations').insert(relations, { ignoreDuplicates: true })
+        const { error: insertError } = await supabase.from('topic_relations').insert(relations)
+        if (insertError) throw insertError
       }
 
       setEditing(false)
