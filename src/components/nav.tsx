@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { Avatar } from '@/components/avatar'
 import { Button } from '@/components/ui/button'
 import type { User } from '@supabase/supabase-js'
 
@@ -11,8 +12,12 @@ export function Nav() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [username, setUsername] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -20,13 +25,9 @@ export function Nav() {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
       if (data.user) {
-        supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', data.user.id)
-          .single()
+        supabase.from('profiles').select('username, display_name, avatar_url').eq('id', data.user.id).single()
           .then(({ data: profile }) => {
-            if (profile) setUsername(profile.username)
+            if (profile) { setUsername(profile.username); setDisplayName(profile.display_name); setAvatarUrl(profile.avatar_url) }
           })
       }
     })
@@ -34,21 +35,29 @@ export function Nav() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', session.user.id)
-          .single()
+        supabase.from('profiles').select('username, display_name, avatar_url').eq('id', session.user.id).single()
           .then(({ data: profile }) => {
-            if (profile) setUsername(profile.username)
+            if (profile) { setUsername(profile.username); setDisplayName(profile.display_name); setAvatarUrl(profile.avatar_url) }
           })
       } else {
-        setUsername(null)
+        setUsername(null); setDisplayName(null); setAvatarUrl(null)
       }
     })
 
-    return () => subscription.unsubscribe()
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => { subscription.unsubscribe(); document.removeEventListener('mousedown', handleClickOutside) }
   }, [])
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setMenuOpen(false)
+    router.push('/')
+    router.refresh()
+  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -104,9 +113,44 @@ export function Nav() {
               <Link href="/create" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
                 Create
               </Link>
-              <Link href={username ? `/profile/${username}` : '#'}>
-                <Button variant="outline" size="sm">Profile</Button>
-              </Link>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(o => !o)}
+                  className="flex items-center gap-2 rounded-full hover:opacity-80 transition-opacity"
+                >
+                  <Avatar url={avatarUrl} name={displayName ?? username ?? 'U'} size="sm" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-10 z-30 bg-white border border-neutral-200 rounded-xl shadow-md py-1.5 w-48">
+                    <div className="px-3 py-2 border-b border-neutral-100 mb-1">
+                      <p className="text-sm font-medium text-neutral-900 truncate">{displayName ?? username}</p>
+                      <p className="text-xs text-neutral-400 truncate">@{username}</p>
+                    </div>
+                    <Link
+                      href={username ? `/profile/${username}` : '#'}
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/profile/edit"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                    >
+                      Edit profile
+                    </Link>
+                    <div className="border-t border-neutral-100 mt-1 pt-1">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
