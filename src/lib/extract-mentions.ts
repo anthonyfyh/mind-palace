@@ -4,16 +4,23 @@ type TiptapNode = {
   content?: TiptapNode[]
 }
 
-export function extractMentionIds(doc: TiptapNode): string[] {
-  const ids: string[] = []
+export function extractMentionIds(doc: unknown): string[] {
+  try {
+    const ids: string[] = []
 
-  function walk(node: TiptapNode) {
-    if (node.type === 'mention' && node.attrs?.id) {
-      ids.push(node.attrs.id)
+    function walk(node: TiptapNode) {
+      if (node.type === 'mention' && node.attrs?.id) {
+        ids.push(node.attrs.id)
+      }
+      node.content?.forEach(walk)
     }
-    node.content?.forEach(walk)
-  }
 
-  walk(doc)
-  return [...new Set(ids)]
+    if (doc && typeof doc === 'object' && 'type' in (doc as object)) {
+      walk(doc as TiptapNode)
+    }
+
+    return [...new Set(ids)]
+  } catch {
+    return []
+  }
 }

@@ -114,11 +114,11 @@ export default function CreatePage() {
 
       if (postError) throw postError
 
-      // Extract mentions and save topic relations
-      const mentionedTopicIds = extractMentionIds(postContent as Parameters<typeof extractMentionIds>[0])
+      // Extract mentions and save topic relations (keyed by post_id for future cleanup)
+      const mentionedTopicIds = extractMentionIds(postContent)
       const relations = mentionedTopicIds
         .filter(id => id !== topicId)
-        .map(toId => ({ from_id: topicId, to_id: toId }))
+        .map(toId => ({ post_id: post.id, from_id: topicId, to_id: toId }))
 
       if (relations.length > 0) {
         await supabase.from('topic_relations').insert(relations, { ignoreDuplicates: true })

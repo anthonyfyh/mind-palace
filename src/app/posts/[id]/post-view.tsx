@@ -76,10 +76,12 @@ export function PostView({ post, comments, userId, allTopics }: {
 
       if (updateError) throw updateError
 
-      const mentionedIds = extractMentionIds(content as Parameters<typeof extractMentionIds>[0])
+      // Delete this post's existing edges, then re-insert from current content
+      await supabase.from('topic_relations').delete().eq('post_id', post.id)
+      const mentionedIds = extractMentionIds(content)
       const relations = mentionedIds
         .filter(id => id !== post.topic_id)
-        .map(toId => ({ from_id: post.topic_id, to_id: toId }))
+        .map(toId => ({ post_id: post.id, from_id: post.topic_id, to_id: toId }))
       if (relations.length > 0) {
         await supabase.from('topic_relations').insert(relations, { ignoreDuplicates: true })
       }

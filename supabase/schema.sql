@@ -72,11 +72,13 @@ create table collection_posts (
 );
 
 -- ─── TOPIC RELATIONS ─────────────────────────────────────────────────────────
--- Edges in the mind map graph — links between related topics
+-- Edges in the mind map graph — one row per post-mention pair.
+-- post_id cascades on delete; graph queries use DISTINCT (from_id, to_id).
 create table topic_relations (
-  from_id uuid references topics(id) on delete cascade,
-  to_id   uuid references topics(id) on delete cascade,
-  primary key (from_id, to_id)
+  post_id uuid not null references posts(id) on delete cascade,
+  from_id uuid not null references topics(id) on delete cascade,
+  to_id   uuid not null references topics(id) on delete cascade,
+  primary key (post_id, to_id)
 );
 
 -- ─── FOLLOWS ─────────────────────────────────────────────────────────────────
@@ -134,9 +136,14 @@ create policy "Authors manage their collection posts" on collection_posts for al
   exists (select 1 from collections where id = collection_id and author_id = auth.uid())
 );
 
--- Topic relations: public read, authenticated create
+-- Topic relations: public read, post author can insert/delete
 create policy "Topic relations are viewable by everyone" on topic_relations for select using (true);
-create policy "Authenticated users can create relations" on topic_relations for insert with check (auth.role() = 'authenticated');
+create policy "Post authors can create relations" on topic_relations for insert with check (
+  exists (select 1 from posts where id = post_id and author_id = auth.uid())
+);
+create policy "Post authors can delete their relations" on topic_relations for delete using (
+  exists (select 1 from posts where id = post_id and author_id = auth.uid())
+);
 
 -- Follows: public read, owner write
 create policy "Follows are viewable by everyone" on follows for select using (true);

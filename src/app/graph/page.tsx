@@ -30,10 +30,15 @@ export default async function GraphPage() {
     postCount: t.posts?.[0]?.count ?? 0,
   }))
 
-  const links = (relations ?? []).map((r: { from_id: string; to_id: string }) => ({
-    source: r.from_id,
-    target: r.to_id,
-  }))
+  const seen = new Set<string>()
+  const links = (relations ?? [])
+    .filter((r: { from_id: string; to_id: string }) => {
+      const key = `${r.from_id}:${r.to_id}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .map((r: { from_id: string; to_id: string }) => ({ source: r.from_id, target: r.to_id }))
 
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a]">
