@@ -33,17 +33,179 @@ function extractPlainText(raw: string | null): string {
   }
 }
 
+function Initials({ name }: { name: string }) {
+  const letters = name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('')
+  return (
+    <div className="w-10 h-10 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
+      <span className="text-sm font-semibold text-white">{letters}</span>
+    </div>
+  )
+}
+
 export default async function BrowsePage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string; sort?: string }>
+  searchParams: Promise<{ subject?: string; sort?: string; mode?: string }>
 }) {
-  const { subject: subjectSlug, sort = 'newest' } = await searchParams
+  const { subject: subjectSlug, sort = 'newest', mode = 'topics' } = await searchParams
   const supabase = await createClient()
 
   const { data: subjects } = await supabase.from('subjects').select('*').order('name')
   const activeSubject = subjects?.find(s => s.slug === subjectSlug) ?? subjects?.[0]
 
+  // ── AUTHORS MODE ──────────────────────────────────────────────────────────
+  if (mode === 'authors') {
+    const { data: posts } = await supabase
+      .from('posts')
+      .select(`
+        author_id,
+        topic_id,
+        topic:topics(subject:subjects(name, slug)),
+        author:profiles(id, username, display_name, bio, created_at)
+      `)
+      .eq('is_draft', false)
+
+    type AuthorRow = {
+      author_id: string
+      topic_id: string
+      topic: { subject: { name: string; slug: string } | null } | null
+      author: { id: string; username: string; display_name: string | null; bio: string | null; created_at: string } | null
+    }
+
+    // Aggregate per author
+    const authorMap = new Map<string, {
+      profile: NonNullable<AuthorRow['author']>
+      topicIds: Set<string>
+      subjectSlugs: Set<string>
+      postCount: number
+    }>()
+
+    for (const p of (posts ?? []) as AuthorRow[]) {
+      if (!p.author) continue
+      if (!authorMap.has(p.author_id)) {
+        authorMap.set(p.author_id, {
+          profile: p.author,
+          topicIds: new Set(),
+          subjectSlugs: new Set(),
+          postCount: 0,
+        })
+      }
+      const entry = authorMap.get(p.author_id)!
+      entry.postCount++
+      entry.topicIds.add(p.topic_id)
+      const slug = p.topic?.subject?.slug
+      if (slug) entry.subjectSlugs.add(slug)
+    }
+
+    let authors = [...authorMap.values()]
+
+    const authorSort = sort === 'topics' ? 'topics' : sort === 'newest' ? 'newest' : 'popular'
+    authors.sort((a, b) => {
+      if (authorSort === 'topics')  return b.topicIds.size - a.topicIds.size
+      if (authorSort === 'newest')  return new Date(b.profile.created_at).getTime() - new Date(a.profile.created_at).getTime()
+      return b.postCount - a.postCount
+    })
+
+    const totalAuthors = authors.length
+    const totalPosts = authors.reduce((s, a) => s + a.postCount, 0)
+
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Nav />
+        <main className="max-w-5xl mx-auto w-full px-4 py-10">
+
+          {/* Stats */}
+          <div className="flex gap-6 mb-8 text-sm text-neutral-500">
+            <span><strong className="text-neutral-900 font-semibold">{totalAuthors}</strong> contributors</span>
+            <span><strong className="text-neutral-900 font-semibold">{totalPosts}</strong> contributions</span>
+          </div>
+
+          {/* Mode toggle */}
+          <div className="flex gap-2 mb-8">
+            <Link
+              href="/browse?mode=topics"
+              className="text-sm px-4 py-2 rounded-full border transition-colors border-neutral-200 text-neutral-600 hover:border-neutral-400"
+            >
+              By Topic
+            </Link>
+            <Link
+              href="/browse?mode=authors"
+              className="text-sm px-4 py-2 rounded-full border transition-colors border-neutral-900 bg-neutral-900 text-white"
+            >
+              By Author
+            </Link>
+          </div>
+
+          {/* Sort + grid */}
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Contributors</h2>
+            <div className="flex gap-1">
+              {([
+                { value: 'popular', label: 'Most contributions' },
+                { value: 'topics',  label: 'Most topics' },
+                { value: 'newest',  label: 'Newest' },
+              ] as const).map(opt => (
+                <Link
+                  key={opt.value}
+                  href={`/browse?mode=authors&sort=${opt.value}`}
+                  className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                    authorSort === opt.value
+                      ? 'border-neutral-900 bg-neutral-900 text-white'
+                      : 'border-neutral-200 text-neutral-500 hover:border-neutral-400'
+                  }`}
+                >
+                  {opt.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {authors.length === 0 ? (
+            <p className="text-sm text-neutral-400 py-20 text-center">No contributors yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {authors.map(({ profile, postCount, topicIds, subjectSlugs }) => (
+                <Link
+                  key={profile.id}
+                  href={`/profile/${profile.username}`}
+                  className="flex items-start gap-4 border border-neutral-200 rounded-xl px-5 py-4 hover:border-neutral-400 transition-colors"
+                >
+                  <Initials name={profile.display_name ?? profile.username} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-neutral-900 truncate">
+                      {profile.display_name ?? profile.username}
+                    </p>
+                    <p className="text-xs text-neutral-400 mb-2">@{profile.username}</p>
+                    {profile.bio && (
+                      <p className="text-xs text-neutral-500 line-clamp-1 mb-2">{profile.bio}</p>
+                    )}
+                    <div className="flex items-center gap-3 text-xs text-neutral-400">
+                      <span>{postCount} {postCount === 1 ? 'contribution' : 'contributions'}</span>
+                      <span>{topicIds.size} {topicIds.size === 1 ? 'topic' : 'topics'}</span>
+                    </div>
+                    {subjectSlugs.size > 0 && (
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {[...subjectSlugs].map(slug => (
+                          <span
+                            key={slug}
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: SUBJECT_COLORS[slug] ?? '#ccc' }}
+                            title={slug}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+    )
+  }
+
+  // ── TOPICS MODE ───────────────────────────────────────────────────────────
   const { data: rawTopics } = activeSubject
     ? await supabase
         .from('topics')
@@ -109,11 +271,27 @@ export default async function BrowsePage({
       <Nav />
       <main className="max-w-5xl mx-auto w-full px-4 py-10">
 
-        {/* Stats strip */}
+        {/* Stats */}
         <div className="flex gap-6 mb-8 text-sm text-neutral-500">
           <span><strong className="text-neutral-900 font-semibold">{topics.length}</strong> topics</span>
           <span><strong className="text-neutral-900 font-semibold">{totalPosts}</strong> contributions</span>
           <span><strong className="text-neutral-900 font-semibold">{totalContributors}</strong> contributors</span>
+        </div>
+
+        {/* Mode toggle */}
+        <div className="flex gap-2 mb-6">
+          <Link
+            href={`/browse?mode=topics&subject=${activeSubject?.slug ?? ''}`}
+            className="text-sm px-4 py-2 rounded-full border transition-colors border-neutral-900 bg-neutral-900 text-white"
+          >
+            By Topic
+          </Link>
+          <Link
+            href="/browse?mode=authors"
+            className="text-sm px-4 py-2 rounded-full border transition-colors border-neutral-200 text-neutral-600 hover:border-neutral-400"
+          >
+            By Author
+          </Link>
         </div>
 
         {/* Subject tabs */}
@@ -121,7 +299,7 @@ export default async function BrowsePage({
           {subjects?.map((s: { id: number; name: string; slug: string }) => (
             <Link
               key={s.slug}
-              href={`/browse?subject=${s.slug}`}
+              href={`/browse?subject=${s.slug}&mode=topics`}
               className={`px-4 py-2 rounded-full text-sm border transition-colors ${
                 s.id === activeSubject?.id
                   ? 'bg-neutral-900 text-white border-neutral-900'
@@ -145,9 +323,7 @@ export default async function BrowsePage({
             {/* Featured */}
             {featured.length > 0 && (
               <section className="mb-10">
-                <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">
-                  Featured
-                </h2>
+                <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">Featured</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {featured.map(t => (
                     <Link
@@ -198,7 +374,7 @@ export default async function BrowsePage({
                     ] as const).map(opt => (
                       <Link
                         key={opt.value}
-                        href={`/browse?subject=${activeSubject?.slug}&sort=${opt.value}`}
+                        href={`/browse?subject=${activeSubject?.slug}&sort=${opt.value}&mode=topics`}
                         className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
                           sort === opt.value
                             ? 'border-neutral-900 bg-neutral-900 text-white'
