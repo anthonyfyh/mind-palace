@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
+import { Avatar } from '@/components/avatar'
 
 const TYPE_LABELS: Record<string, string> = {
   solution: 'Solution',
@@ -18,25 +19,31 @@ export default async function SearchPage({
   const query = q?.trim() ?? ''
   const supabase = await createClient()
 
-  const [{ data: topics }, { data: posts }] = query
+  const [{ data: topics }, { data: posts }, { data: people }] = query
     ? await Promise.all([
         supabase
           .from('topics')
           .select('id, title, description, subject:subjects(name, slug)')
           .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
           .order('title')
-          .limit(20),
+          .limit(10),
         supabase
           .from('posts')
           .select('id, title, type, topic:topics!posts_topic_id_fkey(id, title)')
           .ilike('title', `%${query}%`)
           .eq('is_draft', false)
           .order('title')
-          .limit(20),
+          .limit(10),
+        supabase
+          .from('profiles')
+          .select('id, username, display_name, bio, avatar_url')
+          .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+          .order('username')
+          .limit(8),
       ])
-    : [{ data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }]
 
-  const hasResults = (topics?.length ?? 0) + (posts?.length ?? 0) > 0
+  const hasResults = (topics?.length ?? 0) + (posts?.length ?? 0) + (people?.length ?? 0) > 0
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -48,7 +55,7 @@ export default async function SearchPage({
             name="q"
             defaultValue={query}
             autoFocus
-            placeholder="Search topics and posts…"
+            placeholder="Search topics, posts, and people…"
             className="w-full border border-neutral-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-neutral-400 transition-colors"
           />
         </form>
@@ -61,16 +68,37 @@ export default async function SearchPage({
           <p className="text-sm text-neutral-400">No results for &ldquo;{query}&rdquo;.</p>
         )}
 
+        {(people?.length ?? 0) > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">People</h2>
+            <div className="flex flex-col gap-2">
+              {people!.map((p: {
+                id: string; username: string; display_name: string | null
+                bio: string | null; avatar_url: string | null
+              }) => (
+                <Link
+                  key={p.id}
+                  href={`/profile/${p.username}`}
+                  className="flex items-center gap-3 border border-neutral-200 rounded-lg px-4 py-3 hover:border-neutral-400 transition-colors"
+                >
+                  <Avatar url={p.avatar_url} name={p.display_name ?? p.username} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900">{p.display_name ?? p.username}</p>
+                    <p className="text-xs text-neutral-400">@{p.username}</p>
+                    {p.bio && <p className="text-xs text-neutral-500 mt-0.5 truncate">{p.bio}</p>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {(topics?.length ?? 0) > 0 && (
           <section className="mb-8">
-            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
-              Topics
-            </h2>
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Topics</h2>
             <div className="flex flex-col gap-2">
               {topics!.map((t: {
-                id: string
-                title: string
-                description: string | null
+                id: string; title: string; description: string | null
                 subject: { name: string; slug: string } | null
               }) => (
                 <Link
@@ -91,14 +119,10 @@ export default async function SearchPage({
 
         {(posts?.length ?? 0) > 0 && (
           <section>
-            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
-              Posts
-            </h2>
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Posts</h2>
             <div className="flex flex-col gap-2">
               {posts!.map((p: {
-                id: string
-                title: string
-                type: string
+                id: string; title: string; type: string
                 topic: { id: string; title: string } | null
               }) => (
                 <Link

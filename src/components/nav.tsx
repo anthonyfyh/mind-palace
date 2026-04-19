@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/avatar'
 import { NotificationBell } from '@/components/notification-bell'
@@ -85,8 +86,8 @@ export function Nav() {
   return (
     <header className="border-b border-neutral-100 relative z-20">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <Link href="/" className="font-semibold tracking-tight text-neutral-900 shrink-0">
-          mind palace
+        <Link href="/" className="shrink-0 flex items-center">
+          <Image src="/logo.png" alt="Mind Palace" width={32} height={32} className="rounded-md" priority />
         </Link>
 
         {/* Desktop nav */}
