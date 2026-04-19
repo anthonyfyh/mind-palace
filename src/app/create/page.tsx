@@ -330,6 +330,24 @@ export default function CreatePage() {
         await supabase.from('topic_relations').insert(relations)
       }
 
+      // Notify topic creator if this is a published post by someone else
+      if (!isDraft) {
+        const { data: topicData } = await supabase
+          .from('topics')
+          .select('created_by')
+          .eq('id', topicId)
+          .single()
+        if (topicData && topicData.created_by !== user.id) {
+          await supabase.from('notifications').insert({
+            user_id: topicData.created_by,
+            type: 'new_contribution',
+            actor_id: user.id,
+            post_id: post.id,
+            topic_id: topicId,
+          })
+        }
+      }
+
       router.push(`/posts/${post.id}`)
     } catch (err: unknown) {
       const message = err instanceof Error

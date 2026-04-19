@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/avatar'
+import { NotificationBell } from '@/components/notification-bell'
 import { Button } from '@/components/ui/button'
 import type { User } from '@supabase/supabase-js'
 
@@ -113,6 +114,7 @@ export function Nav() {
               <Link href="/create" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
                 Create
               </Link>
+              {user && <NotificationBell userId={user.id} />}
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(o => !o)}

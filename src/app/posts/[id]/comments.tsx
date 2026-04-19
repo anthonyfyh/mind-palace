@@ -38,6 +38,21 @@ export function Comments({ postId, initialComments, userId }: {
     if (!error && data) {
       setComments(prev => [data as Comment, ...prev])
       setBody('')
+
+      // Notify post author if commenter is someone else
+      const { data: postData } = await supabase
+        .from('posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single()
+      if (postData && postData.author_id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: postData.author_id,
+          type: 'new_comment',
+          actor_id: user.id,
+          post_id: postId,
+        })
+      }
     }
     setSubmitting(false)
   }
