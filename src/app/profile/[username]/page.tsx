@@ -11,12 +11,45 @@ const TYPE_LABELS: Record<string, string> = {
   process:   'Process',
 }
 
+const SUBJECT_ORDER = ['Productivity', 'Personal Finance', 'Career', 'Economics', 'Life Skills']
+
 function Initials({ name }: { name: string }) {
   const letters = name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('')
   return (
     <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
       <span className="text-xl font-semibold text-white">{letters}</span>
     </div>
+  )
+}
+
+type PostRow = {
+  id: string; title: string; type: string; created_at: string; is_draft: boolean
+  topic: { id: string; title: string; subject: { name: string; slug: string } | null } | null
+}
+
+function PostCard({ post }: { post: PostRow }) {
+  return (
+    <Link
+      href={`/posts/${post.id}`}
+      className="block border border-neutral-200 rounded-lg px-5 py-4 hover:border-neutral-400 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
+              {TYPE_LABELS[post.type] ?? post.type}
+            </span>
+          </div>
+          <h3 className="text-base font-medium text-neutral-900">{post.title}</h3>
+          {post.topic && (
+            <p className="text-xs text-neutral-400 mt-1">on: {post.topic.title}</p>
+          )}
+        </div>
+        <span className="shrink-0 text-xs text-neutral-400 mt-0.5">
+          {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
+      </div>
+    </Link>
   )
 }
 
@@ -43,14 +76,21 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const isOwner = user?.id === profile.id
 
-  const published = (posts ?? []).filter(p => !p.is_draft)
-  const drafts = (posts ?? []).filter(p => p.is_draft)
+  const published = (posts ?? []).filter(p => !p.is_draft) as PostRow[]
+  const drafts = (posts ?? []).filter(p => p.is_draft) as PostRow[]
 
-  // Topics this user has contributed to (unique)
-  type PostRow = {
-    id: string; title: string; type: string; created_at: string; is_draft: boolean
-    topic: { id: string; title: string; subject: { name: string; slug: string } | null } | null
+  // Group published posts by subject
+  const bySubject = new Map<string, PostRow[]>()
+  for (const post of published) {
+    const subjectName = post.topic?.subject?.name ?? 'Other'
+    if (!bySubject.has(subjectName)) bySubject.set(subjectName, [])
+    bySubject.get(subjectName)!.push(post)
   }
+  const subjectGroups = [...bySubject.entries()].sort(
+    ([a], [b]) => (SUBJECT_ORDER.indexOf(a) ?? 99) - (SUBJECT_ORDER.indexOf(b) ?? 99)
+  )
+
+  // Unique topics contributed to
   const contributedTopics = [
     ...new Map(
       (posts ?? [])
@@ -83,7 +123,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                     href={`/profile/${profile.username}/graph`}
                     className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
                   >
-                    View graph
+                    Mind map
                   </Link>
                   {isOwner && (
                     <>
@@ -105,7 +145,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           </div>
 
           {/* Stats row */}
-          <div className="flex gap-6 text-sm text-neutral-500 pl-21 border-t border-neutral-100 pt-5 mt-5">
+          <div className="flex gap-6 text-sm text-neutral-500 border-t border-neutral-100 pt-5 mt-5">
             <span>
               <strong className="text-neutral-900 font-semibold">{published.length}</strong>{' '}
               {published.length === 1 ? 'contribution' : 'contributions'}
@@ -114,6 +154,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               <strong className="text-neutral-900 font-semibold">{contributedTopics.length}</strong>{' '}
               {contributedTopics.length === 1 ? 'topic' : 'topics'}
             </span>
+            <span>
+              <strong className="text-neutral-900 font-semibold">{subjectGroups.length}</strong>{' '}
+              {subjectGroups.length === 1 ? 'subject' : 'subjects'}
+            </span>
             <span className="ml-auto text-xs text-neutral-400">Joined {memberSince}</span>
           </div>
         </div>
@@ -121,9 +165,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         {/* ── TOPICS CONTRIBUTED TO ── */}
         {contributedTopics.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
-              Topics
-            </h2>
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Topics</h2>
             <div className="flex flex-wrap gap-2">
               {contributedTopics.map(t => (
                 <Link
@@ -138,53 +180,30 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           </section>
         )}
 
-        {/* ── PUBLISHED ── */}
-        <section className="mb-10">
-          <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">
-            {published.length} Published
-          </h2>
-
-          {published.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {(published as PostRow[]).map(post => (
-                <Link
-                  key={post.id}
-                  href={`/posts/${post.id}`}
-                  className="block border border-neutral-200 rounded-lg px-5 py-4 hover:border-neutral-400 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-                          {TYPE_LABELS[post.type] ?? post.type}
-                        </span>
-                        {post.topic?.subject && (
-                          <span className="text-xs text-neutral-400">{post.topic.subject.name}</span>
-                        )}
-                      </div>
-                      <h3 className="text-base font-medium text-neutral-900">{post.title}</h3>
-                      {post.topic && (
-                        <p className="text-xs text-neutral-400 mt-1">on: {post.topic.title}</p>
-                      )}
-                    </div>
-                    <span className="shrink-0 text-xs text-neutral-400 mt-0.5">
-                      {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 border border-dashed border-neutral-200 rounded-xl">
-              <p className="text-sm text-neutral-400">No published contributions yet.</p>
-              {isOwner && (
-                <Link href="/create" className="mt-3 inline-block text-sm text-neutral-700 underline underline-offset-2">
-                  Write your first post
-                </Link>
-              )}
-            </div>
-          )}
-        </section>
+        {/* ── CONTRIBUTIONS GROUPED BY SUBJECT ── */}
+        {published.length > 0 ? (
+          <div className="mb-10 flex flex-col gap-10">
+            {subjectGroups.map(([subjectName, posts]) => (
+              <section key={subjectName}>
+                <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">
+                  {subjectName} · {posts.length} {posts.length === 1 ? 'contribution' : 'contributions'}
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {posts.map(post => <PostCard key={post.id} post={post} />)}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 border border-dashed border-neutral-200 rounded-xl mb-10">
+            <p className="text-sm text-neutral-400">No published contributions yet.</p>
+            {isOwner && (
+              <Link href="/create" className="mt-3 inline-block text-sm text-neutral-700 underline underline-offset-2">
+                Write your first post
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* ── DRAFTS (owner only) ── */}
         {isOwner && drafts.length > 0 && (
@@ -193,7 +212,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               {drafts.length} {drafts.length === 1 ? 'Draft' : 'Drafts'}
             </h2>
             <div className="flex flex-col gap-3">
-              {(drafts as PostRow[]).map(post => (
+              {drafts.map(post => (
                 <Link
                   key={post.id}
                   href={`/posts/${post.id}`}

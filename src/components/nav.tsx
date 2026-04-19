@@ -97,7 +97,7 @@ export function Nav() {
             Browse
           </Link>
           <Link href="/graph" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
-            Graph
+            Mind map
           </Link>
           {user ? (
             <>
