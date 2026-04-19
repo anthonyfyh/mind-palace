@@ -15,7 +15,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: topic }, { data: posts }, { data: { user } }] = await Promise.all([
+  const [{ data: topic }, { data: posts }, { data: { user } }, { data: allTopics }] = await Promise.all([
     supabase
       .from('topics')
       .select(`*, subject:subjects(name, slug)`)
@@ -28,6 +28,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
       .eq('is_draft', false)
       .order('created_at', { ascending: false }),
     supabase.auth.getUser(),
+    supabase.from('topics').select('id, title').order('title'),
   ])
 
   if (!topic) notFound()
@@ -45,7 +46,11 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
           </Link>
         </div>
 
-        <TopicHeader topic={{ id: topic.id, title: topic.title, description: topic.description }} isCreator={isCreator} />
+        <TopicHeader
+          topic={{ id: topic.id, title: topic.title, description: topic.description }}
+          isCreator={isCreator}
+          allTopics={(allTopics ?? []).filter(t => t.id !== topic.id)}
+        />
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">
