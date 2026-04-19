@@ -87,7 +87,7 @@ export function Nav() {
     <header className="border-b border-neutral-100 relative z-20">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         <Link href="/" className="shrink-0 flex items-center">
-          <Image src="/logo.png" alt="Mind Palace" width={32} height={32} className="rounded-md" priority />
+          <Image src="/logo2.png" alt="Mind Palace" width={120} height={40} className="h-8 w-auto" priority />
         </Link>
 
         {/* Desktop nav */}
