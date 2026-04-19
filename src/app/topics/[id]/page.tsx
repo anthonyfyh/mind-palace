@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
+import { TopicHeader } from './topic-header'
 
 const TYPE_LABELS: Record<string, string> = {
   solution: 'Solution',
@@ -14,62 +15,47 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: topic } = await supabase
-    .from('topics')
-    .select(`
-      *,
-      subject:subjects(name, slug)
-    `)
-    .eq('id', id)
-    .single()
+  const [{ data: topic }, { data: posts }, { data: { user } }] = await Promise.all([
+    supabase
+      .from('topics')
+      .select(`*, subject:subjects(name, slug)`)
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('posts')
+      .select(`id, title, type, created_at, author:profiles(username, display_name)`)
+      .eq('topic_id', id)
+      .eq('is_draft', false)
+      .order('created_at', { ascending: false }),
+    supabase.auth.getUser(),
+  ])
 
   if (!topic) notFound()
 
-  const { data: posts } = await supabase
-    .from('posts')
-    .select(`
-      id, title, type, created_at,
-      author:profiles(username, display_name)
-    `)
-    .eq('topic_id', id)
-    .eq('is_draft', false)
-    .order('created_at', { ascending: false })
+  const isCreator = user?.id === topic.created_by
 
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
 
       <main className="max-w-3xl mx-auto w-full px-4 py-10">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
-          <Link
-            href={`/browse?subject=${topic.subject?.slug}`}
-            className="hover:text-neutral-600 transition-colors"
-          >
+          <Link href={`/browse?subject=${topic.subject?.slug}`} className="hover:text-neutral-600 transition-colors">
             {topic.subject?.name}
           </Link>
         </div>
 
-        {/* Topic header */}
-        <h1 className="text-3xl font-semibold tracking-tight mb-2">{topic.title}</h1>
-        {topic.description && (
-          <p className="text-neutral-500 mb-8">{topic.description}</p>
-        )}
+        <TopicHeader topic={{ id: topic.id, title: topic.title, description: topic.description }} isCreator={isCreator} />
 
-        {/* Contribute CTA */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">
             {posts?.length ?? 0} {posts?.length === 1 ? 'Contribution' : 'Contributions'}
           </h2>
-          <Link
-            href={`/create`}
-            className="text-sm text-neutral-700 border border-neutral-200 rounded-md px-3 py-1.5 hover:border-neutral-400 transition-colors"
-          >
+          <Link href="/create" className="text-sm text-neutral-700 border border-neutral-200 rounded-md px-3 py-1.5 hover:border-neutral-400 transition-colors">
             + Add yours
           </Link>
         </div>
 
-        {/* Posts list */}
         {posts && posts.length > 0 ? (
           <div className="flex flex-col gap-3">
             {posts.map((post: {
@@ -106,10 +92,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
         ) : (
           <div className="text-center py-16 text-neutral-400">
             <p className="text-sm">No contributions yet.</p>
-            <Link
-              href="/create"
-              className="mt-3 inline-block text-sm text-neutral-700 underline underline-offset-2 hover:text-neutral-900"
-            >
+            <Link href="/create" className="mt-3 inline-block text-sm text-neutral-700 underline underline-offset-2 hover:text-neutral-900">
               Be the first to contribute
             </Link>
           </div>

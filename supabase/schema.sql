@@ -111,9 +111,10 @@ create policy "Public profiles are viewable by everyone" on profiles for select 
 create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = id);
 create policy "Users can update their own profile" on profiles for update using (auth.uid() = id);
 
--- Topics: public read, authenticated create — creator must match auth.uid()
+-- Topics: public read, authenticated create, creator can update
 create policy "Topics are viewable by everyone" on topics for select using (true);
 create policy "Authenticated users can create topics" on topics for insert with check (auth.uid() = created_by);
+create policy "Creators can update their own topics" on topics for update using (auth.uid() = created_by);
 
 -- Posts: published posts are public; drafts only visible to author
 create policy "Published posts are viewable by everyone" on posts for select using (is_draft = false or author_id = auth.uid());
