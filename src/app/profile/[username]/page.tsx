@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Button } from '@/components/ui/button'
+import { Avatar } from '@/components/avatar'
 
 const TYPE_LABELS: Record<string, string> = {
   solution:  'Solution',
@@ -12,15 +13,6 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const SUBJECT_ORDER = ['Productivity', 'Personal Finance', 'Career', 'Economics', 'Life Skills']
-
-function Initials({ name }: { name: string }) {
-  const letters = name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('')
-  return (
-    <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
-      <span className="text-xl font-semibold text-white">{letters}</span>
-    </div>
-  )
-}
 
 type PostRow = {
   id: string; title: string; type: string; created_at: string; is_draft: boolean
@@ -59,7 +51,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, username, display_name, bio, avatar_url, created_at')
     .eq('username', username)
     .single()
 
@@ -111,7 +103,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         {/* ── PROFILE HEADER ── */}
         <div className="mb-10">
           <div className="flex items-start gap-5 mb-5">
-            <Initials name={displayName} />
+            <Avatar url={profile.avatar_url} name={displayName} size="lg" />
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div>

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
+import { Avatar } from '@/components/avatar'
 
 const SUBJECT_COLORS: Record<string, string> = {
   'productivity':     '#6366f1',
@@ -33,14 +34,6 @@ function extractPlainText(raw: string | null): string {
   }
 }
 
-function Initials({ name }: { name: string }) {
-  const letters = name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('')
-  return (
-    <div className="w-10 h-10 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
-      <span className="text-sm font-semibold text-white">{letters}</span>
-    </div>
-  )
-}
 
 export default async function BrowsePage({
   searchParams,
@@ -61,7 +54,7 @@ export default async function BrowsePage({
         author_id,
         topic_id,
         topic:topics!posts_topic_id_fkey(subject:subjects(name, slug)),
-        author:profiles(id, username, display_name, bio, created_at)
+        author:profiles(id, username, display_name, bio, avatar_url, created_at)
       `)
       .eq('is_draft', false)
 
@@ -170,7 +163,7 @@ export default async function BrowsePage({
                   href={`/profile/${profile.username}`}
                   className="flex items-start gap-4 border border-neutral-200 rounded-xl px-5 py-4 hover:border-neutral-400 transition-colors"
                 >
-                  <Initials name={profile.display_name ?? profile.username} />
+                  <Avatar url={profile.avatar_url} name={profile.display_name ?? profile.username} size="md" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-neutral-900 truncate">
                       {profile.display_name ?? profile.username}

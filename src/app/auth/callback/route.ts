@@ -9,6 +9,17 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient()
     await supabase.auth.exchangeCodeForSession(code)
+
+    // Sync Google avatar if profile doesn't have one yet
+    const { data: { user } } = await supabase.auth.getUser()
+    const googleAvatar = user?.user_metadata?.avatar_url
+    if (user && googleAvatar) {
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: googleAvatar })
+        .eq('id', user.id)
+        .is('avatar_url', null)
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`)
