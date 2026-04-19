@@ -28,7 +28,7 @@ export default async function SearchPage({
           .limit(20),
         supabase
           .from('posts')
-          .select('id, title, type, topic:topics(id, title)')
+          .select('id, title, type, topic:topics!posts_topic_id_fkey(id, title)')
           .ilike('title', `%${query}%`)
           .eq('is_draft', false)
           .order('title')

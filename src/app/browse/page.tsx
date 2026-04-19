@@ -60,7 +60,7 @@ export default async function BrowsePage({
       .select(`
         author_id,
         topic_id,
-        topic:topics(subject:subjects(name, slug)),
+        topic:topics!posts_topic_id_fkey(subject:subjects(name, slug)),
         author:profiles(id, username, display_name, bio, created_at)
       `)
       .eq('is_draft', false)

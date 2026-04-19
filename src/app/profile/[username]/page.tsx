@@ -35,7 +35,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const [{ data: posts }, { data: { user } }] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, title, type, created_at, is_draft, topic:topics(id, title, subject:subjects(name, slug))')
+      .select('id, title, type, created_at, is_draft, topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug))')
       .eq('author_id', profile.id)
       .order('created_at', { ascending: false }),
     supabase.auth.getUser(),

@@ -10,7 +10,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const [{ data: post }, { data: comments }, { data: { user } }, { data: allTopics }] = await Promise.all([
     supabase
       .from('posts')
-      .select(`*, author:profiles(id, username, display_name), topic:topics(id, title, description, subject:subjects(name, slug))`)
+      .select(`*, author:profiles(id, username, display_name), topic:topics!posts_topic_id_fkey(id, title, description, subject:subjects(name, slug))`)
       .eq('id', id)
       .single(),
     supabase
