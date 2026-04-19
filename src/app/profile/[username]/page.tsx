@@ -102,42 +102,39 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
         {/* ── PROFILE HEADER ── */}
         <div className="mb-10">
-          <div className="flex items-start gap-5 mb-5">
+          <div className="flex items-start gap-4 mb-5">
             <Avatar url={profile.avatar_url} name={displayName} size="lg" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
-                  <p className="text-sm text-neutral-400 mt-0.5">@{profile.username}</p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Link
-                    href={`/profile/${profile.username}/graph`}
-                    className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
-                  >
-                    Mind map
-                  </Link>
-                  {isOwner && (
-                    <>
-                      <Link href="/create">
-                        <Button size="sm">+ Create</Button>
-                      </Link>
-                      <Link href="/profile/edit">
-                        <Button variant="outline" size="sm">Edit profile</Button>
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{displayName}</h1>
+              <p className="text-sm text-neutral-400 mt-0.5">@{profile.username}</p>
               {profile.bio && (
-                <p className="mt-3 text-sm text-neutral-600 leading-relaxed max-w-lg">{profile.bio}</p>
+                <p className="mt-2 text-sm text-neutral-600 leading-relaxed">{profile.bio}</p>
               )}
             </div>
           </div>
 
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2 mb-5">
+            <Link
+              href={`/profile/${profile.username}/graph`}
+              className="text-sm border border-neutral-200 rounded-md px-3 py-1.5 text-neutral-600 hover:border-neutral-400 transition-colors"
+            >
+              Mind map
+            </Link>
+            {isOwner && (
+              <>
+                <Link href="/create">
+                  <Button size="sm">+ Create</Button>
+                </Link>
+                <Link href="/profile/edit">
+                  <Button variant="outline" size="sm">Edit profile</Button>
+                </Link>
+              </>
+            )}
+          </div>
+
           {/* Stats row */}
-          <div className="flex gap-6 text-sm text-neutral-500 border-t border-neutral-100 pt-5 mt-5">
+          <div className="flex flex-wrap gap-4 text-sm text-neutral-500 border-t border-neutral-100 pt-5">
             <span>
               <strong className="text-neutral-900 font-semibold">{published.length}</strong>{' '}
               {published.length === 1 ? 'contribution' : 'contributions'}

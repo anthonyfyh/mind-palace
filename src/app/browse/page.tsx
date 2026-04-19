@@ -130,9 +130,9 @@ export default async function BrowsePage({
           </div>
 
           {/* Sort + grid */}
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Contributors</h2>
-            <div className="flex gap-1">
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mr-auto">Contributors</h2>
+            <div className="flex flex-wrap gap-1">
               {([
                 { value: 'popular', label: 'Most contributions' },
                 { value: 'topics',  label: 'Most topics' },
@@ -355,11 +355,11 @@ export default async function BrowsePage({
             {/* All topics + sort */}
             {rest.length > 0 && (
               <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mr-auto">
                     {featured.length > 0 ? 'All Topics' : 'Topics'}
                   </h2>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {([
                       { value: 'newest',       label: 'Newest' },
                       { value: 'popular',      label: 'Most contributions' },

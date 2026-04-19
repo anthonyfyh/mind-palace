@@ -362,7 +362,7 @@ export default function CreatePage() {
     <div className="min-h-screen flex flex-col">
       <Nav />
 
-      <main className="max-w-3xl mx-auto w-full px-8 py-12">
+      <main className="max-w-3xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-12">
 
         {/* Title */}
         <input
@@ -370,11 +370,11 @@ export default function CreatePage() {
           value={postTitle}
           onChange={e => setPostTitle(e.target.value)}
           placeholder="Untitled"
-          className="w-full text-4xl font-bold text-neutral-900 placeholder:text-neutral-200 outline-none bg-transparent mb-6 leading-tight"
+          className="w-full text-2xl sm:text-4xl font-bold text-neutral-900 placeholder:text-neutral-200 outline-none bg-transparent mb-6 leading-tight"
         />
 
         {/* Inline metadata row */}
-        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-neutral-100">
+        <div className="flex flex-wrap items-center gap-3 mb-8 pb-6 border-b border-neutral-100">
           <SubjectPicker subjects={subjects} value={subject} onChange={setSubject} />
           <span className="text-neutral-200">·</span>
           <TopicPicker topics={allTopics} subjectId={subject?.id ?? null} value={topic} onChange={setTopic} />

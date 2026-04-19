@@ -41,7 +41,7 @@ export default async function Home() {
         <p className="text-xs font-medium text-neutral-400 uppercase tracking-widest mb-4">
           Knowledge, shared differently
         </p>
-        <h1 className="text-5xl font-semibold tracking-tight text-neutral-900 max-w-2xl leading-tight">
+        <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight text-neutral-900 max-w-2xl leading-tight">
           Every topic has many perspectives.
         </h1>
         <p className="mt-5 text-lg text-neutral-500 max-w-xl leading-relaxed">
@@ -58,7 +58,7 @@ export default async function Home() {
         </div>
 
         {/* Platform stats */}
-        <div className="flex gap-8 mt-12 pt-10 border-t border-neutral-100">
+        <div className="flex flex-wrap gap-6 mt-12 pt-10 border-t border-neutral-100">
           {[
             { label: 'Topics', value: topicCount ?? 0 },
             { label: 'Contributions', value: postCount ?? 0 },
@@ -169,7 +169,7 @@ export default async function Home() {
             ))}
           </div>
 
-          <div className="mt-12 pt-10 border-t border-neutral-100 flex items-center justify-between">
+          <div className="mt-12 pt-10 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-4">
             <p className="text-sm text-neutral-500">Ready to contribute?</p>
             <Link href="/auth/signup">
               <Button>Create an account</Button>

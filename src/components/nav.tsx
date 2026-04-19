@@ -18,6 +18,7 @@ export function Nav() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function Nav() {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    setMenuOpen(false)
+    setMenuOpen(false); setMobileOpen(false)
     router.push('/')
     router.refresh()
   }
@@ -64,19 +65,29 @@ export function Nav() {
     e.preventDefault()
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
-      setSearchOpen(false)
-      setSearchQuery('')
+      setSearchOpen(false); setSearchQuery('')
     }
   }
 
+  const navLinks = (
+    <>
+      <Link href="/browse" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Browse</Link>
+      <Link href="/graph" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Mind map</Link>
+      {user && (
+        <Link href="/create" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Create</Link>
+      )}
+    </>
+  )
+
   return (
-    <header className="border-b border-neutral-100">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="font-semibold tracking-tight text-neutral-900">
+    <header className="border-b border-neutral-100 relative z-20">
+      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        <Link href="/" className="font-semibold tracking-tight text-neutral-900 shrink-0">
           mind palace
         </Link>
 
-        <nav className="flex items-center gap-4">
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-4 flex-1 justify-end">
           {searchOpen ? (
             <form onSubmit={handleSearch} className="flex items-center gap-2">
               <input
@@ -87,39 +98,21 @@ export function Nav() {
                 placeholder="Search…"
                 className="border border-neutral-200 rounded-md px-3 py-1.5 text-sm outline-none focus:border-neutral-400 transition-colors w-48"
               />
-              <button
-                type="button"
-                onClick={() => setSearchOpen(false)}
-                className="text-xs text-neutral-400 hover:text-neutral-600"
-              >
+              <button type="button" onClick={() => setSearchOpen(false)} className="text-xs text-neutral-400 hover:text-neutral-600">
                 Cancel
               </button>
             </form>
           ) : (
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
-            >
+            <button onClick={() => setSearchOpen(true)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
               Search
             </button>
           )}
-          <Link href="/browse" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
-            Browse
-          </Link>
-          <Link href="/graph" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
-            Mind map
-          </Link>
+          {navLinks}
           {user ? (
             <>
-              <Link href="/create" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
-                Create
-              </Link>
-              {user && <NotificationBell userId={user.id} />}
+              <NotificationBell userId={user.id} />
               <div className="relative" ref={menuRef}>
-                <button
-                  onClick={() => setMenuOpen(o => !o)}
-                  className="flex items-center gap-2 rounded-full hover:opacity-80 transition-opacity"
-                >
+                <button onClick={() => setMenuOpen(o => !o)} className="flex items-center rounded-full hover:opacity-80 transition-opacity">
                   <Avatar url={avatarUrl} name={displayName ?? username ?? 'U'} size="sm" />
                 </button>
                 {menuOpen && (
@@ -128,27 +121,10 @@ export function Nav() {
                       <p className="text-sm font-medium text-neutral-900 truncate">{displayName ?? username}</p>
                       <p className="text-xs text-neutral-400 truncate">@{username}</p>
                     </div>
-                    <Link
-                      href={username ? `/profile/${username}` : '#'}
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/profile/edit"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                    >
-                      Edit profile
-                    </Link>
+                    <Link href={username ? `/profile/${username}` : '#'} onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">Profile</Link>
+                    <Link href="/profile/edit" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">Edit profile</Link>
                     <div className="border-t border-neutral-100 mt-1 pt-1">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        Log out
-                      </button>
+                      <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">Log out</button>
                     </div>
                   </div>
                 )}
@@ -156,16 +132,75 @@ export function Nav() {
             </>
           ) : (
             <>
-              <Link href="/auth/login">
-                <Button variant="ghost" size="sm">Log in</Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button size="sm">Sign up</Button>
-              </Link>
+              <Link href="/auth/login"><Button variant="ghost" size="sm">Log in</Button></Link>
+              <Link href="/auth/signup"><Button size="sm">Sign up</Button></Link>
             </>
           )}
         </nav>
+
+        {/* Mobile right side */}
+        <div className="flex md:hidden items-center gap-2">
+          {user && <NotificationBell userId={user.id} />}
+          {user && (
+            <Link href={username ? `/profile/${username}` : '#'}>
+              <Avatar url={avatarUrl} name={displayName ?? username ?? 'U'} size="sm" />
+            </Link>
+          )}
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+            aria-label="Menu"
+          >
+            {mobileOpen ? <XIcon /> : <HamburgerIcon />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-neutral-100 bg-white px-4 py-4 flex flex-col gap-1">
+          <form onSubmit={handleSearch} className="flex items-center gap-2 mb-3">
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search…"
+              className="flex-1 border border-neutral-200 rounded-md px-3 py-2 text-sm outline-none focus:border-neutral-400 transition-colors"
+            />
+            <Button type="submit" size="sm">Go</Button>
+          </form>
+          <Link href="/browse" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Browse</Link>
+          <Link href="/graph" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Mind map</Link>
+          {user ? (
+            <>
+              <Link href="/create" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Create</Link>
+              <Link href={username ? `/profile/${username}` : '#'} onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Profile</Link>
+              <Link href="/profile/edit" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Edit profile</Link>
+              <button onClick={handleLogout} className="py-2.5 text-sm text-red-500 text-left">Log out</button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth/login" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Log in</Link>
+              <Link href="/auth/signup" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700">Sign up</Link>
+            </>
+          )}
+        </div>
+      )}
     </header>
+  )
+}
+
+function HamburgerIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
   )
 }
