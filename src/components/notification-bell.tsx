@@ -7,7 +7,7 @@ import { Avatar } from '@/components/avatar'
 
 type Notification = {
   id: string
-  type: 'new_contribution' | 'new_comment'
+  type: 'new_contribution' | 'new_comment' | 'new_post'
   read: boolean
   created_at: string
   actor: { username: string; display_name: string | null; avatar_url: string | null } | null
@@ -81,6 +81,9 @@ export function NotificationBell({ userId }: { userId: string }) {
     const actor = n.actor?.display_name ?? n.actor?.username ?? 'Someone'
     if (n.type === 'new_contribution') {
       return <><strong>{actor}</strong> contributed to <strong>{n.post?.topic?.title ?? 'a topic'}</strong></>
+    }
+    if (n.type === 'new_post') {
+      return <><strong>{actor}</strong> posted <strong>{n.post?.title ?? 'something new'}</strong></>
     }
     return <><strong>{actor}</strong> commented on <strong>{n.post?.title ?? 'your post'}</strong></>
   }

@@ -254,6 +254,74 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- ─── SUBSCRIPTIONS ───────────────────────────────────────────────────────────
+-- type 'topic'   → entity_id is a topics.id
+-- type 'subject' → entity_id is a subjects.id
+create table subscriptions (
+  user_id    uuid not null references profiles(id) on delete cascade,
+  type       text not null check (type in ('topic', 'subject')),
+  entity_id  text not null,  -- uuid for topics, integer string for subjects
+  created_at timestamptz default now(),
+  primary key (user_id, type, entity_id)
+);
+alter table subscriptions enable row level security;
+create policy "Users can manage their own subscriptions" on subscriptions
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ─── NOTIFICATIONS: add new_post type ────────────────────────────────────────
+-- For existing databases run:
+--   alter table notifications drop constraint notifications_type_check;
+--   alter table notifications add constraint notifications_type_check
+--     check (type in ('new_contribution', 'new_comment', 'new_post'));
+
+-- ─── NOTIFICATION FAN-OUT TRIGGER ────────────────────────────────────────────
+-- Fires when a post is first published (is_draft flips false).
+-- Notifies topic creator (new_contribution) + topic/subject/author subscribers (new_post).
+create or replace function public.notify_new_post()
+returns trigger language plpgsql security definer as $$
+declare
+  v_subject_id uuid;
+begin
+  if not (
+    (TG_OP = 'INSERT' and NEW.is_draft = false) or
+    (TG_OP = 'UPDATE' and OLD.is_draft = true and NEW.is_draft = false)
+  ) then
+    return NEW;
+  end if;
+
+  select subject_id into v_subject_id from topics where id = NEW.topic_id;
+
+  -- Notify the topic creator (new_contribution)
+  insert into notifications (user_id, actor_id, type, post_id, topic_id)
+  select t.created_by, NEW.author_id, 'new_contribution', NEW.id, NEW.topic_id
+  from topics t
+  where t.id = NEW.topic_id and t.created_by != NEW.author_id
+  on conflict do nothing;
+
+  -- Notify all other subscribers (topic + subject + author followers), deduplicated
+  insert into notifications (user_id, actor_id, type, post_id, topic_id)
+  select distinct target_id, NEW.author_id, 'new_post', NEW.id, NEW.topic_id
+  from (
+    select user_id as target_id from subscriptions
+      where type = 'topic' and entity_id = NEW.topic_id
+    union
+    select user_id from subscriptions
+      where type = 'subject' and entity_id = v_subject_id::text
+    union
+    select follower_id from follows
+      where following_id = NEW.author_id
+  ) targets
+  where target_id != NEW.author_id
+  on conflict do nothing;
+
+  return NEW;
+end;
+$$;
+
+create trigger on_post_published
+  after insert or update on posts
+  for each row execute procedure public.notify_new_post();
+
 -- ─── AI USAGE QUOTA ──────────────────────────────────────────────────────────
 create table ai_usage (
   user_id uuid not null references profiles(id) on delete cascade,

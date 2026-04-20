@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Avatar } from '@/components/avatar'
+import { SubscribeButton } from '@/components/subscribe-button'
 
 const SUBJECT_COLORS: Record<string, string> = {
   'productivity':     '#6366f1',
@@ -43,8 +44,16 @@ export default async function BrowsePage({
   const { subject: subjectSlug, sort = 'newest', mode = 'topics' } = await searchParams
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const userId = user?.id ?? null
+
   const { data: subjects } = await supabase.from('subjects').select('*').order('name')
   const activeSubject = subjects?.find(s => s.slug === subjectSlug) ?? subjects?.[0]
+
+  const { data: mySubjectSub } = userId && activeSubject
+    ? await supabase.from('subscriptions').select('user_id').eq('user_id', userId).eq('type', 'subject').eq('entity_id', String(activeSubject.id)).maybeSingle()
+    : Promise.resolve({ data: null })
+  const isSubjectSubscribed = !!mySubjectSub
 
   // ── AUTHORS MODE ──────────────────────────────────────────────────────────
   if (mode === 'authors') {
@@ -287,8 +296,8 @@ export default async function BrowsePage({
           </Link>
         </div>
 
-        {/* Subject tabs */}
-        <div className="flex gap-2 flex-wrap mb-8">
+        {/* Subject tabs + subscribe */}
+        <div className="flex gap-2 flex-wrap items-center mb-8">
           {subjects?.map((s: { id: number; name: string; slug: string }) => (
             <Link
               key={s.slug}
@@ -302,6 +311,17 @@ export default async function BrowsePage({
               {s.name}
             </Link>
           ))}
+          {activeSubject && (
+            <div className="ml-auto">
+              <SubscribeButton
+                type="subject"
+                entityId={String(activeSubject.id)}
+                userId={userId}
+                initialSubscribed={isSubjectSubscribed}
+                label={activeSubject.name}
+              />
+            </div>
+          )}
         </div>
 
         {topics.length === 0 ? (

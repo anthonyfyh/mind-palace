@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { TopicHeader } from './topic-header'
 import { TopicDigest } from '@/components/topic-digest'
+import { SubscribeButton } from '@/components/subscribe-button'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -65,7 +66,12 @@ export default async function TopicPage({
 
   if (!topic) notFound()
 
-  const isCreator = user?.id === topic.created_by
+  const userId = user?.id ?? null
+  const isCreator = userId === topic.created_by
+  const { data: mySub } = userId
+    ? await supabase.from('subscriptions').select('user_id').eq('user_id', userId).eq('type', 'topic').eq('entity_id', id).maybeSingle()
+    : Promise.resolve({ data: null })
+  const isSubscribed = !!mySub
 
   // Stats
   const uniqueContributors = new Set((allPosts ?? []).map((p: { author: { id: string } | null }) => p.author?.id).filter(Boolean)).size
@@ -135,9 +141,9 @@ export default async function TopicPage({
         {/* AI Digest */}
         <TopicDigest topicId={id} postCount={allPosts?.length ?? 0} />
 
-        {/* Header row: filter tabs + CTA */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex gap-1">
+        {/* Header row: filter tabs + actions */}
+        <div className="flex items-center justify-between mb-5 gap-2 flex-wrap">
+          <div className="flex gap-1 flex-wrap">
             <Link
               href={`/topics/${id}`}
               className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
@@ -162,12 +168,22 @@ export default async function TopicPage({
               </Link>
             ))}
           </div>
-          <Link
-            href="/create"
-            className="text-sm text-neutral-700 border border-neutral-200 rounded-md px-3 py-1.5 hover:border-neutral-400 transition-colors"
-          >
-            + Add yours
-          </Link>
+          <div className="flex items-center gap-2">
+            {!isCreator && (
+              <SubscribeButton
+                type="topic"
+                entityId={id}
+                userId={userId}
+                initialSubscribed={isSubscribed}
+              />
+            )}
+            <Link
+              href="/create"
+              className="text-sm text-neutral-700 border border-neutral-200 rounded-md px-3 py-1.5 hover:border-neutral-400 transition-colors"
+            >
+              + Add yours
+            </Link>
+          </div>
         </div>
 
         {/* Posts */}

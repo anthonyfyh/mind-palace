@@ -13,27 +13,61 @@ export default async function FeedPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: follows } = await supabase
-    .from('follows')
-    .select('following_id')
-    .eq('follower_id', user.id)
+  const [
+    { data: follows },
+    { data: topicSubs },
+    { data: subjectSubs },
+  ] = await Promise.all([
+    supabase.from('follows').select('following_id').eq('follower_id', user.id),
+    supabase.from('subscriptions').select('entity_id').eq('user_id', user.id).eq('type', 'topic'),
+    supabase.from('subscriptions').select('entity_id').eq('user_id', user.id).eq('type', 'subject'),
+  ])
 
   const followingIds = (follows ?? []).map(f => f.following_id)
+  const subscribedTopicIds = (topicSubs ?? []).map(s => s.entity_id)
+  const subscribedSubjectIds = (subjectSubs ?? []).map(s => s.entity_id)
 
-  const { data: posts } = followingIds.length > 0
-    ? await supabase
-        .from('posts')
-        .select(`
-          id, title, type, created_at,
-          author:profiles(username, display_name, avatar_url),
-          topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug)),
-          likes(count)
-        `)
-        .in('author_id', followingIds)
-        .eq('is_draft', false)
-        .order('created_at', { ascending: false })
-        .limit(50)
-    : { data: [] }
+  // Resolve subject subscriptions → topic ids
+  const subjectTopicIds: string[] = []
+  if (subscribedSubjectIds.length > 0) {
+    const { data: subjectTopics } = await supabase
+      .from('topics')
+      .select('id')
+      .in('subject_id', subscribedSubjectIds.map(Number))
+    for (const t of subjectTopics ?? []) subjectTopicIds.push(t.id)
+  }
+
+  const allTopicIds = [...new Set([...subscribedTopicIds, ...subjectTopicIds])]
+  const hasAuthors = followingIds.length > 0
+  const hasTopics = allTopicIds.length > 0
+  const isEmpty = !hasAuthors && !hasTopics
+
+  const postSelect = `
+    id, title, type, created_at,
+    author:profiles(username, display_name, avatar_url),
+    topic:topics!posts_topic_id_fkey(id, title, subject:subjects(name, slug)),
+    likes(count)
+  `
+
+  let feedPosts: unknown[] = []
+
+  if (!isEmpty) {
+    const filters: string[] = []
+    if (hasAuthors) filters.push(`author_id.in.(${followingIds.join(',')})`)
+    if (hasTopics) filters.push(`topic_id.in.(${allTopicIds.join(',')})`)
+
+    const { data } = await supabase
+      .from('posts')
+      .select(postSelect)
+      .or(filters.join(','))
+      .eq('is_draft', false)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    feedPosts = data ?? []
+  }
+
+  const posts = feedPosts
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -41,12 +75,17 @@ export default async function FeedPage() {
       <main className="max-w-2xl mx-auto w-full px-4 py-10">
         <h1 className="text-xl font-semibold tracking-tight mb-8">Your feed</h1>
 
-        {followingIds.length === 0 ? (
+        {isEmpty ? (
           <div className="text-center py-20 border border-dashed border-neutral-200 rounded-xl">
-            <p className="text-sm text-neutral-500 mb-2">You're not following anyone yet.</p>
-            <Link href="/browse?mode=authors" className="text-sm text-neutral-700 underline underline-offset-2 hover:text-neutral-900">
-              Discover contributors →
-            </Link>
+            <p className="text-sm text-neutral-500 mb-2">Your feed is empty — follow authors or subscribe to topics.</p>
+            <div className="flex justify-center gap-4 mt-3">
+              <Link href="/browse?mode=authors" className="text-sm text-neutral-700 underline underline-offset-2 hover:text-neutral-900">
+                Discover contributors →
+              </Link>
+              <Link href="/browse" className="text-sm text-neutral-700 underline underline-offset-2 hover:text-neutral-900">
+                Browse topics →
+              </Link>
+            </div>
           </div>
         ) : (posts ?? []).length === 0 ? (
           <div className="text-center py-20 border border-dashed border-neutral-200 rounded-xl">
