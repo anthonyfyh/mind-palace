@@ -5,7 +5,11 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mind-palace.vercel.app'),
+  metadataBase: new URL((() => {
+    const raw = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+    if (!raw) return 'https://mind-palace.vercel.app'
+    return raw.startsWith('http') ? raw : `https://${raw}`
+  })()),
   title: "Mind Palace",
   description: "A depository of intellectual work. Discover unique ways people explain ideas.",
   openGraph: {
