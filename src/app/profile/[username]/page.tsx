@@ -29,11 +29,21 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
 }
 
 const SUBJECT_ORDER = ['Productivity', 'Personal Finance', 'Career', 'Economics', 'Life Skills']
+const TYPE_LABELS: Record<string, string> = {
+  solution: 'Solution',
+  framework: 'Framework',
+  concept: 'Concept',
+  process: 'Process',
+}
 
 type PostRow = {
   id: string; title: string; type: string; created_at: string; is_draft: boolean
   topic: { id: string; title: string; subject: { name: string; slug: string } | null } | null
   likeCount?: number
+}
+
+function firstValue<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
 function PostCard({ post }: { post: PostRow }) {
@@ -105,11 +115,23 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     ? await supabase.from('follows').select('follower_id').eq('follower_id', user.id).eq('following_id', profile.id).maybeSingle()
     : { data: null }
 
-  const published = (posts ?? []).filter(p => !p.is_draft).map(p => ({
-    ...p,
-    likeCount: (p as unknown as { likes?: { count: number }[] }).likes?.[0]?.count ?? 0,
-  })) as PostRow[]
-  const drafts = (posts ?? []).filter(p => p.is_draft) as PostRow[]
+  type DbPostRow = Omit<PostRow, 'topic'> & {
+    topic: { id: string; title: string; subject: { name: string; slug: string } | { name: string; slug: string }[] | null } | { id: string; title: string; subject: { name: string; slug: string } | { name: string; slug: string }[] | null }[] | null
+    likes?: { count: number }[]
+  }
+
+  function normalizePost(post: DbPostRow): PostRow {
+    const topic = firstValue(post.topic)
+    return {
+      ...post,
+      topic: topic ? { ...topic, subject: firstValue(topic.subject) } : null,
+      likeCount: post.likes?.[0]?.count ?? 0,
+    }
+  }
+
+  const normalizedPosts = ((posts ?? []) as unknown as DbPostRow[]).map(normalizePost)
+  const published = normalizedPosts.filter(p => !p.is_draft)
+  const drafts = normalizedPosts.filter(p => p.is_draft)
 
   // Group published posts by subject
   const bySubject = new Map<string, PostRow[]>()
@@ -125,11 +147,34 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   // Unique topics contributed to
   const contributedTopics = [
     ...new Map(
-      (posts ?? [])
+      normalizedPosts
         .filter((p): p is PostRow & { topic: NonNullable<PostRow['topic']> } => !!p.topic)
         .map(p => [p.topic.id, p.topic])
     ).values(),
   ]
+
+  type DbCollection = {
+    id: string
+    title: string
+    description: string | null
+    is_draft: boolean
+    subject: { name: string } | { name: string }[] | null
+    collection_posts?: { count: number }[]
+  }
+  const normalizedCollections = ((collections ?? []) as unknown as DbCollection[]).map(collection => ({
+    ...collection,
+    subject: firstValue(collection.subject),
+  }))
+
+  type DbBookmark = {
+    post: { id: string; title: string; type: string; topic: { title: string } | { title: string }[] | null } | { id: string; title: string; type: string; topic: { title: string } | { title: string }[] | null }[] | null
+  }
+  const normalizedBookmarks = ((bookmarkedPosts ?? []) as unknown as DbBookmark[]).map(bookmark => {
+    const post = firstValue(bookmark.post)
+    return {
+      post: post ? { ...post, topic: firstValue(post.topic) } : null,
+    }
+  })
 
   const displayName = profile.display_name ?? profile.username
   const memberSince = new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -202,7 +247,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         </div>
 
         {/* ── COLLECTIONS ── */}
-        {((collections ?? []).filter(c => !c.is_draft || isOwner)).length > 0 && (
+        {(normalizedCollections.filter(c => !c.is_draft || isOwner)).length > 0 && (
           <section className="mb-10">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Collections</h2>
@@ -211,11 +256,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               )}
             </div>
             <div className="flex flex-col gap-3">
-              {(collections ?? []).filter(c => !c.is_draft || isOwner).map((c: {
-                id: string; title: string; description: string | null; is_draft: boolean
-                subject: { name: string } | null
-                collection_posts?: { count: number }[]
-              }) => (
+              {normalizedCollections.filter(c => !c.is_draft || isOwner).map(c => (
                 <Link
                   key={c.id}
                   href={`/collections/${c.id}`}
@@ -320,13 +361,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         )}
 
         {/* ── BOOKMARKS (owner only) ── */}
-        {isOwner && (bookmarkedPosts ?? []).length > 0 && (
+        {isOwner && normalizedBookmarks.length > 0 && (
           <section className="mt-10">
             <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">Bookmarks</h2>
             <div className="flex flex-col gap-3">
-              {(bookmarkedPosts ?? []).map((b: {
-                post: { id: string; title: string; type: string; topic: { title: string } | null } | null
-              }) => b.post && (
+              {normalizedBookmarks.map(b => b.post && (
                 <Link
                   key={b.post.id}
                   href={`/posts/${b.post.id}`}

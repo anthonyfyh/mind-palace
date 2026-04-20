@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Nav } from '@/components/nav'
@@ -10,6 +10,14 @@ import { extractMentionIds } from '@/lib/extract-mentions'
 
 type Subject = { id: number; name: string; slug: string }
 type Topic = { id: string; title: string; subject_id: number }
+
+const SUBJECT_COLORS: Record<string, string> = {
+  productivity: '#6366f1',
+  'personal-finance': '#10b981',
+  career: '#f59e0b',
+  economics: '#ef4444',
+  'life-skills': '#8b5cf6',
+}
 
 const POST_TYPES = [
   { value: 'solution',  label: 'Solution',  description: 'A direct answer to a specific problem' },
@@ -56,11 +64,14 @@ function SubjectPicker({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-700 transition-colors"
+        className="group inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm text-neutral-400 transition-colors hover:text-neutral-800"
       >
-        <span className="text-neutral-300">#</span>
+        <span
+          className="h-2.5 w-2.5 rounded-full bg-neutral-200 transition-colors group-hover:bg-neutral-400"
+          style={value ? { backgroundColor: SUBJECT_COLORS[value.slug] ?? '#111827' } : undefined}
+        />
         {value ? (
-          <span className="text-neutral-700 font-medium">{value.name}</span>
+          <span className="font-medium text-neutral-800">{value.name}</span>
         ) : (
           <span>subject</span>
         )}
@@ -75,18 +86,19 @@ function SubjectPicker({
         </button>
       )}
       {open && (
-        <div className="absolute top-7 left-0 z-20 bg-white border border-neutral-200 rounded-lg shadow-md p-2 w-52">
+        <div className="absolute left-0 top-9 z-20 w-60 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-xl shadow-neutral-950/10 backdrop-blur">
           {subjects.map(s => (
             <button
               key={s.id}
               type="button"
               onClick={() => { onChange(s); setOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                 value?.id === s.id
                   ? 'bg-neutral-900 text-white'
                   : 'hover:bg-neutral-100 text-neutral-700'
               }`}
             >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SUBJECT_COLORS[s.slug] ?? '#111827' }} />
               {s.name}
             </button>
           ))}
@@ -157,11 +169,11 @@ function TopicPicker({
         type="button"
         onClick={openPicker}
         disabled={!subjectId}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm text-neutral-400 transition-colors hover:text-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <span className="text-neutral-300">#</span>
+        <span className="text-neutral-300">↳</span>
         {value ? (
-          <span className="text-neutral-700 font-medium">{value.title}</span>
+          <span className="font-medium text-neutral-800">{value.title}</span>
         ) : (
           <span>{subjectId ? 'topic' : 'topic (pick subject first)'}</span>
         )}
@@ -176,8 +188,8 @@ function TopicPicker({
         </button>
       )}
       {open && (
-        <div className="absolute top-7 left-0 z-20 bg-white border border-neutral-200 rounded-lg shadow-md w-72">
-          <div className="p-2 border-b border-neutral-100">
+        <div className="absolute left-0 top-9 z-20 w-80 rounded-2xl border border-neutral-200 bg-white/95 shadow-xl shadow-neutral-950/10 backdrop-blur">
+          <div className="px-3 py-3">
             <input
               ref={inputRef}
               value={query}
@@ -187,16 +199,16 @@ function TopicPicker({
                 if (e.key === 'Escape') { setOpen(false); setQuery('') }
               }}
               placeholder="Search or create topic…"
-              className="w-full text-sm outline-none px-1 py-0.5 text-neutral-700 placeholder:text-neutral-300"
+              className="w-full bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none placeholder:text-neutral-300"
             />
           </div>
-          <div className="p-1.5 max-h-52 overflow-y-auto">
+          <div className="max-h-56 overflow-y-auto px-1.5 pb-1.5">
             {filtered.map(t => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => select(t)}
-                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-neutral-100 text-neutral-700 transition-colors"
+                className="w-full rounded-xl px-3 py-2 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
               >
                 {t.title}
               </button>
@@ -205,7 +217,7 @@ function TopicPicker({
               <button
                 type="button"
                 onClick={createNew}
-                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-neutral-100 text-neutral-500 transition-colors"
+                className="w-full rounded-xl px-3 py-2 text-left text-sm text-neutral-500 transition-colors hover:bg-neutral-100"
               >
                 Create &ldquo;{query.trim()}&rdquo;
               </button>
@@ -239,19 +251,19 @@ function TypePicker({ value, onChange }: { value: string; onChange: (v: string) 
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-700 transition-colors"
+        className="inline-flex items-center gap-1 rounded-full px-1 py-1 text-sm text-neutral-400 transition-colors hover:text-neutral-800"
       >
-        <span className="text-neutral-700 font-medium">{current.label}</span>
+        <span className="font-medium text-neutral-800">{current.label}</span>
         <span className="text-neutral-300 text-xs">▾</span>
       </button>
       {open && (
-        <div className="absolute top-7 left-0 z-20 bg-white border border-neutral-200 rounded-lg shadow-md p-1.5 w-56">
+        <div className="absolute left-0 top-9 z-20 w-64 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-xl shadow-neutral-950/10 backdrop-blur">
           {POST_TYPES.map(t => (
             <button
               key={t.value}
               type="button"
               onClick={() => { onChange(t.value); setOpen(false) }}
-              className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+              className={`w-full rounded-xl px-3 py-2 text-left transition-colors ${
                 value === t.value
                   ? 'bg-neutral-900 text-white'
                   : 'hover:bg-neutral-100 text-neutral-700'
@@ -272,7 +284,7 @@ function TypePicker({ value, onChange }: { value: string; onChange: (v: string) 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CreatePage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [allTopics, setAllTopics] = useState<Topic[]>([])
@@ -289,6 +301,11 @@ export default function CreatePage() {
   const [extractError, setExtractError] = useState<string | null>(null)
   const [editorKey, setEditorKey] = useState(0)
 
+  function handleSubjectChange(nextSubject: Subject | null) {
+    setSubject(nextSubject)
+    setTopic(null)
+  }
+
   useEffect(() => {
     supabase.from('subjects').select('*').order('name').then(({ data }) => {
       if (data) setSubjects(data)
@@ -296,10 +313,7 @@ export default function CreatePage() {
     supabase.from('topics').select('id, title, subject_id').order('title').then(({ data }) => {
       if (data) setAllTopics(data)
     })
-  }, [])
-
-  // Clear topic when subject changes
-  useEffect(() => { setTopic(null) }, [subject])
+  }, [supabase])
 
   async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -402,63 +416,86 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#fbfaf7]">
       <Nav />
 
-      <main className="max-w-3xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-12">
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 sm:py-10 lg:grid-cols-[1fr_16rem]">
+        <section className="relative min-h-[78vh] overflow-hidden rounded-[2.25rem] border border-neutral-200 bg-white shadow-sm">
+          <div className="pointer-events-none absolute left-0 top-0 h-32 w-full bg-gradient-to-b from-amber-50/70 to-transparent" />
+          <div className="relative mx-auto max-w-3xl px-5 py-8 sm:px-10 sm:py-12">
+            <div className="mb-12 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+              <SubjectPicker subjects={subjects} value={subject} onChange={handleSubjectChange} />
+              <span className="text-neutral-200">/</span>
+              <TopicPicker topics={allTopics} subjectId={subject?.id ?? null} value={topic} onChange={setTopic} />
+              <span className="text-neutral-200">/</span>
+              <TypePicker value={postType} onChange={setPostType} />
+            </div>
 
-        {/* PDF upload */}
-        <div className="mb-6 flex items-center gap-3">
-          <label className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-md border transition-colors cursor-pointer ${
-            extracting
-              ? 'border-neutral-200 text-neutral-300 pointer-events-none'
-              : 'border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700'
-          }`}>
-            <PdfIcon />
-            {extracting ? 'Extracting…' : 'Import PDF'}
-            <input type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" disabled={extracting} />
-          </label>
-          {extracting && <span className="text-xs text-neutral-400 animate-pulse">Claude is reading your PDF…</span>}
-          {extractError && <span className="text-xs text-red-500">{extractError}</span>}
-        </div>
+            <input
+              type="text"
+              value={postTitle}
+              onChange={e => setPostTitle(e.target.value)}
+              placeholder="Untitled"
+              className="mb-8 w-full bg-transparent text-4xl font-semibold leading-tight tracking-tight text-neutral-950 outline-none placeholder:text-neutral-200 sm:text-6xl"
+            />
 
-        {/* Title */}
-        <input
-          type="text"
-          value={postTitle}
-          onChange={e => setPostTitle(e.target.value)}
-          placeholder="Untitled"
-          className="w-full text-2xl sm:text-4xl font-bold text-neutral-900 placeholder:text-neutral-200 outline-none bg-transparent mb-6 leading-tight"
-        />
+            <Editor
+              key={editorKey}
+              content={postContent}
+              onChange={setPostContent}
+              topics={allTopics}
+              placeholder="Start writing. Type [ to link to another topic."
+            />
+          </div>
+        </section>
 
-        {/* Inline metadata row */}
-        <div className="flex flex-wrap items-center gap-3 mb-8 pb-6 border-b border-neutral-100">
-          <SubjectPicker subjects={subjects} value={subject} onChange={setSubject} />
-          <span className="text-neutral-200">·</span>
-          <TopicPicker topics={allTopics} subjectId={subject?.id ?? null} value={topic} onChange={setTopic} />
-          <span className="text-neutral-200">·</span>
-          <TypePicker value={postType} onChange={setPostType} />
-        </div>
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <div className="rounded-[2rem] border border-neutral-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400">Create</p>
+            <p className="mt-3 text-sm leading-6 text-neutral-500">
+              Write naturally first. The subject, topic, and type just help place your page in the palace.
+            </p>
+          </div>
 
-        {/* Editor */}
-        <Editor
-          key={editorKey}
-          content={postContent}
-          onChange={setPostContent}
-          topics={allTopics}
-          placeholder="Start writing… Type [ to link to another topic."
-        />
+          <div className="rounded-[2rem] border border-neutral-200 bg-white p-4 shadow-sm">
+            <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm transition-colors ${
+              extracting
+                ? 'bg-neutral-50 text-neutral-300 pointer-events-none'
+                : 'bg-[#fbfaf7] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800'
+            }`}>
+              <span className="flex items-center gap-2">
+                <PdfIcon />
+                {extracting ? 'Extracting…' : 'Import PDF'}
+              </span>
+              <span className="text-neutral-300">+</span>
+              <input type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" disabled={extracting} />
+            </label>
+            {extracting && <p className="mt-3 animate-pulse text-xs text-neutral-400">Claude is reading your PDF…</p>}
+            {extractError && <p className="mt-3 text-xs text-red-500">{extractError}</p>}
+          </div>
 
-        {/* Actions */}
-        <div className="mt-10 pt-6 border-t border-neutral-100 flex items-center gap-3">
-          <Button onClick={() => handleSubmit(false)} disabled={saving}>
-            {saving ? 'Publishing…' : 'Publish'}
-          </Button>
-          <Button variant="outline" onClick={() => handleSubmit(true)} disabled={saving}>
-            Save as draft
-          </Button>
-          {error && <p className="text-sm text-red-500 ml-2">{error}</p>}
-        </div>
+          <div className="rounded-[2rem] border border-neutral-200 bg-neutral-950 p-4 text-white shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/35">Ready?</p>
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                onClick={() => handleSubmit(false)}
+                disabled={saving}
+                className="h-10 rounded-full bg-white text-neutral-950 hover:bg-neutral-200"
+              >
+                {saving ? 'Publishing…' : 'Publish'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleSubmit(true)}
+                disabled={saving}
+                className="h-10 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                Save as draft
+              </Button>
+            </div>
+            {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+          </div>
+        </aside>
       </main>
     </div>
   )

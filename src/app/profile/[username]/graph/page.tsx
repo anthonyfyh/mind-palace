@@ -45,16 +45,19 @@ export default async function ProfileGraphPage({ params }: { params: Promise<{ u
         .in('to_id', topicIds)
     : { data: [] }
 
-  const nodes = (contributedTopics ?? []).map((t: {
+  const nodes = ((contributedTopics ?? []) as unknown as {
     id: string
     title: string
-    subject: { slug: string } | null
-  }) => ({
-    id: t.id,
-    title: t.title,
-    subjectSlug: t.subject?.slug ?? 'other',
-    postCount: postCountByTopic[t.id] ?? 0,
-  }))
+    subject: { slug: string } | { slug: string }[] | null
+  }[]).map(topic => {
+    const subject = Array.isArray(topic.subject) ? topic.subject[0] : topic.subject
+    return {
+      id: topic.id,
+      title: topic.title,
+      subjectSlug: subject?.slug ?? 'other',
+      postCount: postCountByTopic[topic.id] ?? 0,
+    }
+  })
 
   const seen = new Set<string>()
   const links = (relations ?? [])

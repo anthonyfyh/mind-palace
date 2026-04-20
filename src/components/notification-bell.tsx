@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar } from '@/components/avatar'
@@ -30,21 +30,11 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
-  useEffect(() => {
-    fetchNotifications()
-
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [userId])
-
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
       .from('notifications')
       .select(`
@@ -57,7 +47,19 @@ export function NotificationBell({ userId }: { userId: string }) {
       .limit(20)
 
     if (data) setNotifications(data as unknown as Notification[])
-  }
+  }, [supabase, userId])
+
+  useEffect(() => {
+    // Fetching remote state on mount is the intended side effect here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchNotifications()
+
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [fetchNotifications])
 
   async function handleOpen() {
     setOpen(o => !o)

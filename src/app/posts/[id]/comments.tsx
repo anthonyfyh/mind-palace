@@ -11,6 +11,10 @@ type Comment = {
   author: { username: string; display_name: string | null } | null
 }
 
+type DbComment = Omit<Comment, 'author'> & {
+  author: { username: string; display_name: string | null } | { username: string; display_name: string | null }[] | null
+}
+
 export function Comments({ postId, initialComments, userId }: {
   postId: string
   initialComments: Comment[]
@@ -36,7 +40,11 @@ export function Comments({ postId, initialComments, userId }: {
       .single()
 
     if (!error && data) {
-      setComments(prev => [data as Comment, ...prev])
+      const comment = data as unknown as DbComment
+      setComments(prev => [{
+        ...comment,
+        author: Array.isArray(comment.author) ? comment.author[0] ?? null : comment.author,
+      }, ...prev])
       setBody('')
 
       // Notify post author if commenter is someone else

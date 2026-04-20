@@ -4,6 +4,10 @@ import { Nav } from '@/components/nav'
 import { PostView } from './post-view'
 import type { Metadata } from 'next'
 
+function firstValue<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const supabase = await createClient()
@@ -14,8 +18,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     .single()
 
   if (!post) return {}
-  const author = (post.author as { display_name: string | null; username: string } | null)
-  const topic = (post.topic as { title: string } | null)
+  const author = firstValue(post.author as unknown as { display_name: string | null; username: string } | { display_name: string | null; username: string }[] | null)
+  const topic = firstValue(post.topic as unknown as { title: string } | { title: string }[] | null)
   const description = `${author?.display_name ?? author?.username ?? 'A contributor'}'s take on ${topic?.title ?? 'this topic'} — Mind Palace`
 
   return {
@@ -53,6 +57,34 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   if (!post) notFound()
 
   const userId = user?.id ?? null
+  const normalizedPost = {
+    ...post,
+    author: firstValue(post.author as unknown as { id: string; username: string; display_name: string | null } | { id: string; username: string; display_name: string | null }[] | null),
+    topic: (() => {
+      const topic = firstValue(post.topic as unknown as {
+        id: string
+        title: string
+        description: string | null
+        subject: { name: string; slug: string } | { name: string; slug: string }[] | null
+      } | {
+        id: string
+        title: string
+        description: string | null
+        subject: { name: string; slug: string } | { name: string; slug: string }[] | null
+      }[] | null)
+      return topic ? { ...topic, subject: firstValue(topic.subject) } : null
+    })(),
+  }
+
+  const normalizedComments = ((comments ?? []) as unknown as {
+    id: string
+    body: string
+    created_at: string
+    author: { username: string; display_name: string | null } | { username: string; display_name: string | null }[] | null
+  }[]).map(comment => ({
+    ...comment,
+    author: firstValue(comment.author),
+  }))
 
   const [{ data: myLike }, { data: myBookmark }, { data: relatedPosts }] = await Promise.all([
     userId
@@ -71,18 +103,29 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       .limit(4),
   ])
 
+  const normalizedRelatedPosts = ((relatedPosts ?? []) as unknown as {
+    id: string
+    title: string
+    type: string
+    author: { username: string; display_name: string | null } | { username: string; display_name: string | null }[] | null
+    likes?: { count: number }[]
+  }[]).map(relatedPost => ({
+    ...relatedPost,
+    author: firstValue(relatedPost.author),
+  }))
+
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
       <PostView
-        post={post}
-        comments={comments ?? []}
+        post={normalizedPost}
+        comments={normalizedComments}
         userId={userId}
         allTopics={allTopics ?? []}
         likeCount={likeCount ?? 0}
         initialLiked={!!myLike}
         initialBookmarked={!!myBookmark}
-        relatedPosts={relatedPosts ?? []}
+        relatedPosts={normalizedRelatedPosts}
       />
     </div>
   )

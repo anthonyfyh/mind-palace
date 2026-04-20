@@ -32,22 +32,35 @@ export default async function CollectionPage({ params }: { params: Promise<{ id:
 
   if (!collection) notFound()
 
-  const isAuthor = user?.id === (collection.author as { id: string } | null)?.id
+  type CollectionAuthor = { id: string; username: string; display_name: string | null; avatar_url: string | null }
+  type CollectionSubject = { name: string; slug: string }
+  type CollectionPostItem = { id: string; title: string; type: string; is_draft: boolean; topic: { id: string; title: string } | { id: string; title: string }[] | null }
+
+  const author = Array.isArray(collection.author)
+    ? (collection.author[0] as CollectionAuthor | undefined) ?? null
+    : collection.author as CollectionAuthor | null
+  const subject = Array.isArray(collection.subject)
+    ? (collection.subject[0] as CollectionSubject | undefined) ?? null
+    : collection.subject as CollectionSubject | null
+
+  const isAuthor = user?.id === author?.id
 
   // Only show if published or owner
   if (collection.is_draft && !isAuthor) notFound()
 
   type CollectionPost = {
     position: number
-    post: { id: string; title: string; type: string; is_draft: boolean; topic: { id: string; title: string } | null } | null
+    post: CollectionPostItem | CollectionPostItem[] | null
   }
 
-  const posts = ((collection.collection_posts as CollectionPost[]) ?? [])
+  const posts = ((collection.collection_posts as unknown as CollectionPost[]) ?? [])
+    .map(cp => {
+      const post = Array.isArray(cp.post) ? cp.post[0] : cp.post
+      const topic = Array.isArray(post?.topic) ? post.topic[0] ?? null : post?.topic ?? null
+      return { ...cp, post: post ? { ...post, topic } : null }
+    })
     .filter(cp => cp.post && (!cp.post.is_draft || isAuthor))
     .sort((a, b) => a.position - b.position)
-
-  const author = collection.author as { id: string; username: string; display_name: string | null; avatar_url: string | null } | null
-  const subject = collection.subject as { name: string; slug: string } | null
 
   return (
     <div className="min-h-screen flex flex-col">

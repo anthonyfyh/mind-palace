@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Nav } from '@/components/nav'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 
 type Subject = { id: number; name: string; slug: string }
 type Post = { id: string; title: string; type: string; topic: { title: string } | null }
+type DbPost = { id: string; title: string; type: string; topic: { title: string } | { title: string }[] | null }
 
 const TYPE_LABELS: Record<string, string> = {
   solution: 'Solution', framework: 'Framework', concept: 'Concept', process: 'Process',
@@ -15,7 +16,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function NewCollectionPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [myPosts, setMyPosts] = useState<Post[]>([])
@@ -41,10 +42,15 @@ export default function NewCollectionPage() {
           .order('created_at', { ascending: false }),
       ])
       if (subs) setSubjects(subs)
-      if (posts) setMyPosts(posts as Post[])
+      if (posts) {
+        setMyPosts((posts as unknown as DbPost[]).map(post => ({
+          ...post,
+          topic: Array.isArray(post.topic) ? post.topic[0] ?? null : post.topic,
+        })))
+      }
     }
     load()
-  }, [])
+  }, [router, supabase])
 
   function togglePost(post: Post) {
     setSelected(prev =>

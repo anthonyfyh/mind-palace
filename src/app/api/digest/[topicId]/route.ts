@@ -48,12 +48,17 @@ export async function GET(
     return new Response('Not enough posts to generate a digest.', { status: 400 })
   }
 
-  const postSummaries = posts.map((p: {
-    title: string; type: string; content: unknown
-    author: { display_name: string | null; username: string } | null
-  }, i: number) => {
+  type DigestPost = {
+    title: string
+    type: string
+    content: unknown
+    author: { display_name: string | null; username: string } | { display_name: string | null; username: string }[] | null
+  }
+
+  const postSummaries = (posts as DigestPost[]).map((p, i: number) => {
     const text = extractPlainText(p.content)
-    const author = p.author?.display_name ?? p.author?.username ?? 'Anonymous'
+    const authorProfile = Array.isArray(p.author) ? p.author[0] : p.author
+    const author = authorProfile?.display_name ?? authorProfile?.username ?? 'Anonymous'
     return `[${i + 1}] "${p.title}" (${p.type}) by ${author}\n${text ? text.slice(0, 600) : '(no body text)'}`
   }).join('\n\n---\n\n')
 

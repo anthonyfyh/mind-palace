@@ -8,6 +8,10 @@ import { SubscribeButton } from '@/components/subscribe-button'
 import { TypeBadge, TYPE_LABELS } from '@/components/type-badge'
 import type { Metadata } from 'next'
 
+function firstValue<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const supabase = await createClient()
@@ -18,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     .single()
 
   if (!topic) return {}
-  const subject = (topic.subject as { name: string } | null)
+  const subject = firstValue(topic.subject as unknown as { name: string } | { name: string }[] | null)
   const description = `Explore multiple perspectives on ${topic.title}${subject ? ` in ${subject.name}` : ''} — Mind Palace`
   return {
     title: `${topic.title} — Mind Palace`,
@@ -61,21 +65,38 @@ export default async function TopicPage({
   if (!topic) notFound()
 
   const userId = user?.id ?? null
+  const normalizedTopic = {
+    ...topic,
+    subject: firstValue(topic.subject as unknown as { name: string; slug: string } | { name: string; slug: string }[] | null),
+  }
   const isCreator = userId === topic.created_by
-  const { data: mySub } = userId
+  const mySubResult = userId
     ? await supabase.from('subscriptions').select('user_id').eq('user_id', userId).eq('type', 'topic').eq('entity_id', id).maybeSingle()
-    : Promise.resolve({ data: null })
+    : { data: null }
+  const mySub = mySubResult.data
   const isSubscribed = !!mySub
 
+  type TopicPost = {
+    id: string
+    title: string
+    type: string
+    created_at: string
+    author: { id: string; username: string; display_name: string | null } | { id: string; username: string; display_name: string | null }[] | null
+  }
+  const normalizedPosts = ((allPosts ?? []) as unknown as TopicPost[]).map(post => ({
+    ...post,
+    author: firstValue(post.author),
+  }))
+
   // Stats
-  const uniqueContributors = new Set((allPosts ?? []).map((p: { author: { id: string } | null }) => p.author?.id).filter(Boolean)).size
-  const typesPresent = [...new Set((allPosts ?? []).map((p: { type: string }) => p.type))]
+  const uniqueContributors = new Set(normalizedPosts.map(p => p.author?.id).filter(Boolean)).size
+  const typesPresent = [...new Set(normalizedPosts.map(p => p.type))]
     .sort((a, b) => TYPE_ORDER.indexOf(a) - TYPE_ORDER.indexOf(b))
 
   // Filter posts by type
   const posts = typeFilter
-    ? (allPosts ?? []).filter((p: { type: string }) => p.type === typeFilter)
-    : (allPosts ?? [])
+    ? normalizedPosts.filter(p => p.type === typeFilter)
+    : normalizedPosts
 
   // Related topics (from topic_relations, excluding self)
   const relatedIds = (relations ?? [])
@@ -91,6 +112,15 @@ export default async function TopicPage({
         .limit(6)
     : { data: [] }
 
+  const normalizedRelatedTopics = ((relatedTopics ?? []) as unknown as {
+    id: string
+    title: string
+    subject: { name: string; slug: string } | { name: string; slug: string }[] | null
+  }[]).map(relatedTopic => ({
+    ...relatedTopic,
+    subject: firstValue(relatedTopic.subject),
+  }))
+
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
@@ -99,8 +129,8 @@ export default async function TopicPage({
 
         {/* Breadcrumb */}
         <div className="text-sm text-neutral-400 mb-6">
-          <Link href={`/browse?subject=${topic.subject?.slug}`} className="hover:text-neutral-600 transition-colors">
-            {topic.subject?.name}
+          <Link href={`/browse?subject=${normalizedTopic.subject?.slug}`} className="hover:text-neutral-600 transition-colors">
+            {normalizedTopic.subject?.name}
           </Link>
         </div>
 
@@ -114,8 +144,8 @@ export default async function TopicPage({
         {/* Stats strip */}
         <div className="flex items-center gap-5 text-sm text-neutral-500 mt-6 mb-8 pb-8 border-b border-neutral-100">
           <span>
-            <strong className="text-neutral-900 font-semibold">{allPosts?.length ?? 0}</strong>{' '}
-            {(allPosts?.length ?? 0) === 1 ? 'contribution' : 'contributions'}
+            <strong className="text-neutral-900 font-semibold">{normalizedPosts.length}</strong>{' '}
+            {normalizedPosts.length === 1 ? 'contribution' : 'contributions'}
           </span>
           <span>
             <strong className="text-neutral-900 font-semibold">{uniqueContributors}</strong>{' '}
@@ -131,7 +161,7 @@ export default async function TopicPage({
         </div>
 
         {/* AI Digest */}
-        <TopicDigest topicId={id} postCount={allPosts?.length ?? 0} />
+        <TopicDigest topicId={id} postCount={normalizedPosts.length} />
 
         {/* Header row: filter tabs + actions */}
         <div className="flex items-center justify-between mb-5 gap-2 flex-wrap">
@@ -181,10 +211,7 @@ export default async function TopicPage({
         {/* Posts */}
         {posts.length > 0 ? (
           <div className="flex flex-col gap-3 mb-12">
-            {posts.map((post: {
-              id: string; title: string; type: string; created_at: string
-              author: { id: string; username: string; display_name: string | null } | null
-            }) => (
+            {posts.map(post => (
               <Link
                 key={post.id}
                 href={`/posts/${post.id}`}
@@ -226,16 +253,13 @@ export default async function TopicPage({
         )}
 
         {/* Related topics */}
-        {(relatedTopics ?? []).length > 0 && (
+        {normalizedRelatedTopics.length > 0 && (
           <section className="border-t border-neutral-100 pt-8">
             <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-4">
               Related Topics
             </h2>
             <div className="flex flex-col gap-2">
-              {(relatedTopics ?? []).map((t: {
-                id: string; title: string
-                subject: { name: string; slug: string } | null
-              }) => (
+              {normalizedRelatedTopics.map(t => (
                 <Link
                   key={t.id}
                   href={`/topics/${t.id}`}

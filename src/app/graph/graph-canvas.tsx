@@ -69,8 +69,8 @@ export function GraphCanvas({ nodes, links }: { nodes: Node[]; links: Link[] }) 
     ctx.fillStyle = color
     ctx.fill()
 
-    ctx.font = '3px Inter, sans-serif'
-    ctx.fillStyle = '#e5e5e5'
+    ctx.font = '3px ui-sans-serif, system-ui, sans-serif'
+    ctx.fillStyle = '#f5f5f4'
     ctx.textAlign = 'center'
     ctx.fillText(node.title.length > 30 ? node.title.slice(0, 30) + '…' : node.title, node.x, node.y + size + 4)
   }, [getNodeColor, getNodeSize])
@@ -80,11 +80,11 @@ export function GraphCanvas({ nodes, links }: { nodes: Node[]; links: Link[] }) 
       {dimensions && (
         <ForceGraph2D
           graphData={{ nodes, links }}
-          backgroundColor="#0a0a0a"
+          backgroundColor="#151412"
           nodeCanvasObject={paintNode as never}
           nodeCanvasObjectMode={() => 'replace'}
           onNodeClick={handleNodeClick as never}
-          linkColor={() => '#333333'}
+          linkColor={() => 'rgba(255,255,255,0.16)'}
           linkWidth={1}
           nodeLabel={(node) => (node as Node).title}
           cooldownTicks={100}

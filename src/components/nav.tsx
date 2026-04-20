@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +12,7 @@ import type { User } from '@supabase/supabase-js'
 
 export function Nav() {
   const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [username, setUsername] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -70,65 +71,94 @@ export function Nav() {
     }
   }
 
-  const navLinks = (
-    <>
-      {user && (
-        <Link href="/feed" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Feed</Link>
-      )}
-      <Link href="/browse" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Browse</Link>
-      <Link href="/graph" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Mind map</Link>
-      {user && (
-        <Link href="/create" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Create</Link>
-      )}
-    </>
-  )
+  const navItems = [
+    ...(user ? [{ href: '/feed', label: 'Feed' }] : []),
+    { href: '/browse', label: 'Browse' },
+    { href: '/graph', label: 'Mind map' },
+    ...(user ? [{ href: '/create', label: 'Create' }] : []),
+  ]
+
+  function isActive(href: string) {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
 
   return (
-    <header className="border-b border-neutral-100 relative z-20">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <Link href="/" className="shrink-0 flex items-center">
-          <Image src="/logo2.png" alt="Mind Palace" width={160} height={53} className="h-11 w-auto" priority />
+    <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-[#fbfaf7]/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-4 px-4">
+        <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label="Mind Palace home">
+          <span className="relative flex h-11 w-11 items-center justify-center transition-transform group-hover:-rotate-3">
+            <Image
+              src="/brain.png"
+              alt=""
+              width={2000}
+              height={2000}
+              className="h-11 w-11 object-contain"
+              priority
+            />
+          </span>
+          <span className="leading-none">
+            <span className="block text-lg font-semibold tracking-tight text-neutral-950">Mind Palace</span>
+            <span className="hidden text-[10px] font-medium uppercase tracking-[0.22em] text-neutral-400 sm:block">Knowledge atlas</span>
+          </span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-4 flex-1 justify-end">
+        <nav className="hidden items-center rounded-full border border-neutral-200 bg-white/80 p-1 shadow-sm shadow-neutral-950/5 lg:flex">
+          {navItems.map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                isActive(item.href)
+                  ? 'bg-neutral-950 text-white shadow-sm'
+                  : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="hidden items-center justify-end gap-2 lg:flex">
           {searchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-2">
+            <form onSubmit={handleSearch} className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-sm">
               <input
                 autoFocus
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)}
                 placeholder="Search…"
-                className="border border-neutral-200 rounded-md px-3 py-1.5 text-sm outline-none focus:border-neutral-400 transition-colors w-48"
+                className="w-48 bg-transparent px-2 py-1.5 text-sm text-neutral-800 outline-none placeholder:text-neutral-300"
               />
-              <button type="button" onClick={() => setSearchOpen(false)} className="text-xs text-neutral-400 hover:text-neutral-600">
+              <button type="button" onClick={() => setSearchOpen(false)} className="rounded-full px-2 py-1 text-xs text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700">
                 Cancel
               </button>
             </form>
           ) : (
-            <button onClick={() => setSearchOpen(true)} className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="rounded-full border border-neutral-200 bg-white/75 px-4 py-2 text-sm font-medium text-neutral-500 shadow-sm transition-all hover:border-neutral-300 hover:bg-white hover:text-neutral-950"
+            >
               Search
             </button>
           )}
-          {navLinks}
           {user ? (
             <>
               <NotificationBell userId={user.id} />
               <div className="relative" ref={menuRef}>
-                <button onClick={() => setMenuOpen(o => !o)} className="flex items-center rounded-full hover:opacity-80 transition-opacity">
+                <button onClick={() => setMenuOpen(o => !o)} className="flex items-center rounded-full border border-neutral-200 bg-white p-1 shadow-sm transition-all hover:border-neutral-300 hover:shadow-md">
                   <Avatar url={avatarUrl} name={displayName ?? username ?? 'U'} size="sm" />
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-10 z-30 bg-white border border-neutral-200 rounded-xl shadow-md py-1.5 w-48">
+                  <div className="absolute right-0 top-12 z-30 w-56 rounded-2xl border border-neutral-200 bg-white/95 p-1.5 shadow-xl shadow-neutral-950/10 backdrop-blur">
                     <div className="px-3 py-2 border-b border-neutral-100 mb-1">
                       <p className="text-sm font-medium text-neutral-900 truncate">{displayName ?? username}</p>
                       <p className="text-xs text-neutral-400 truncate">@{username}</p>
                     </div>
-                    <Link href={username ? `/profile/${username}` : '#'} onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">Profile</Link>
-                    <Link href="/profile/edit" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">Edit profile</Link>
+                    <Link href={username ? `/profile/${username}` : '#'} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-50">Profile</Link>
+                    <Link href="/profile/edit" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-50">Edit profile</Link>
                     <div className="border-t border-neutral-100 mt-1 pt-1">
-                      <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">Log out</button>
+                      <button onClick={handleLogout} className="w-full rounded-xl px-3 py-2 text-left text-sm text-red-500 transition-colors hover:bg-red-50">Log out</button>
                     </div>
                   </div>
                 )}
@@ -136,14 +166,14 @@ export function Nav() {
             </>
           ) : (
             <>
-              <Link href="/auth/login"><Button variant="ghost" size="sm">Log in</Button></Link>
-              <Link href="/auth/signup"><Button size="sm">Sign up</Button></Link>
+              <Link href="/auth/login"><Button variant="ghost" size="sm" className="rounded-full">Log in</Button></Link>
+              <Link href="/auth/signup"><Button size="sm" className="rounded-full bg-neutral-950 px-4 text-white hover:bg-neutral-800">Sign up</Button></Link>
             </>
           )}
-        </nav>
+        </div>
 
         {/* Mobile right side */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex items-center gap-2 lg:hidden">
           {user && <NotificationBell userId={user.id} />}
           {user && (
             <Link href={username ? `/profile/${username}` : '#'}>
@@ -152,7 +182,7 @@ export function Nav() {
           )}
           <button
             onClick={() => setMobileOpen(o => !o)}
-            className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+            className="rounded-full border border-neutral-200 bg-white p-2 text-neutral-500 shadow-sm transition-colors hover:bg-neutral-100 hover:text-neutral-900"
             aria-label="Menu"
           >
             {mobileOpen ? <XIcon /> : <HamburgerIcon />}
@@ -162,32 +192,42 @@ export function Nav() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-neutral-100 bg-white px-4 py-4 flex flex-col gap-1">
+        <div className="mx-4 mb-4 flex flex-col gap-1 rounded-3xl border border-neutral-200 bg-white p-4 shadow-xl shadow-neutral-950/10 lg:hidden">
           <form onSubmit={handleSearch} className="flex items-center gap-2 mb-3">
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search…"
-              className="flex-1 border border-neutral-200 rounded-md px-3 py-2 text-sm outline-none focus:border-neutral-400 transition-colors"
+              className="flex-1 rounded-full border border-neutral-200 px-3 py-2 text-sm outline-none transition-colors focus:border-neutral-400"
             />
-            <Button type="submit" size="sm">Go</Button>
+            <Button type="submit" size="sm" className="rounded-full">Go</Button>
           </form>
-          {user && (
-            <Link href="/feed" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Feed</Link>
-          )}
-          <Link href="/browse" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Browse</Link>
-          <Link href="/graph" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Mind map</Link>
+          {navItems.map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileOpen(false)}
+              className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive(item.href)
+                  ? 'bg-neutral-950 text-white'
+                  : 'text-neutral-700 hover:bg-neutral-50'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
           {user ? (
             <>
-              <Link href="/create" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Create</Link>
-              <Link href={username ? `/profile/${username}` : '#'} onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Profile</Link>
-              <Link href="/profile/edit" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Edit profile</Link>
-              <button onClick={handleLogout} className="py-2.5 text-sm text-red-500 text-left">Log out</button>
+              <div className="my-2 border-t border-neutral-100" />
+              <Link href={username ? `/profile/${username}` : '#'} onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50">Profile</Link>
+              <Link href="/profile/edit" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50">Edit profile</Link>
+              <button onClick={handleLogout} className="rounded-2xl px-3 py-2.5 text-left text-sm text-red-500 hover:bg-red-50">Log out</button>
             </>
           ) : (
             <>
-              <Link href="/auth/login" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700 border-b border-neutral-50">Log in</Link>
-              <Link href="/auth/signup" onClick={() => setMobileOpen(false)} className="py-2.5 text-sm text-neutral-700">Sign up</Link>
+              <div className="my-2 border-t border-neutral-100" />
+              <Link href="/auth/login" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50">Log in</Link>
+              <Link href="/auth/signup" onClick={() => setMobileOpen(false)} className="rounded-2xl bg-neutral-950 px-3 py-2.5 text-sm font-medium text-white">Sign up</Link>
             </>
           )}
         </div>

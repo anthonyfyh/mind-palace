@@ -14,13 +14,6 @@ import { Label } from '@/components/ui/label'
 import { extractMentionIds } from '@/lib/extract-mentions'
 import { TypeBadge } from '@/components/type-badge'
 
-const TYPE_LABELS: Record<string, string> = {
-  solution: 'Solution',
-  framework: 'Framework',
-  concept: 'Concept',
-  process: 'Process',
-}
-
 const POST_TYPES = [
   { value: 'solution', label: 'Solution', description: 'A direct answer to a specific problem' },
   { value: 'framework', label: 'Framework', description: 'A mental model or thinking tool' },
@@ -53,10 +46,6 @@ type RelatedPost = {
   id: string; title: string; type: string
   author: { username: string; display_name: string | null } | null
   likes?: { count: number }[]
-}
-
-const TYPE_LABELS_MAP: Record<string, string> = {
-  solution: 'Solution', framework: 'Framework', concept: 'Concept', process: 'Process',
 }
 
 export function PostView({ post, comments, userId, allTopics, likeCount, initialLiked, initialBookmarked, relatedPosts }: {

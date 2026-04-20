@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Nav } from '@/components/nav'
@@ -8,6 +8,14 @@ import { Button } from '@/components/ui/button'
 
 type Subject = { id: number; name: string; slug: string }
 type Post = { id: string; title: string; type: string; topic: { title: string } | null }
+type DbPost = { id: string; title: string; type: string; topic: { title: string } | { title: string }[] | null }
+
+function normalizePost(post: DbPost): Post {
+  return {
+    ...post,
+    topic: Array.isArray(post.topic) ? post.topic[0] ?? null : post.topic,
+  }
+}
 
 const TYPE_LABELS: Record<string, string> = {
   solution: 'Solution', framework: 'Framework', concept: 'Concept', process: 'Process',
@@ -16,7 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
 export default function EditCollectionPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [myPosts, setMyPosts] = useState<Post[]>([])
@@ -55,18 +63,18 @@ export default function EditCollectionPage() {
       setDescription(collection.description ?? '')
       setSubjectId(collection.subject_id ?? null)
       if (subs) setSubjects(subs)
-      if (posts) setMyPosts(posts as Post[])
+      if (posts) setMyPosts((posts as unknown as DbPost[]).map(normalizePost))
 
-      type CP = { position: number; post: Post | null }
-      const ordered = ((collection.collection_posts as CP[]) ?? [])
+      type CP = { position: number; post: DbPost | DbPost[] | null }
+      const ordered = ((collection.collection_posts as unknown as CP[]) ?? [])
         .filter(cp => cp.post)
         .sort((a, b) => a.position - b.position)
-        .map(cp => cp.post!)
+        .map(cp => normalizePost(Array.isArray(cp.post) ? cp.post[0] : cp.post!))
       setSelected(ordered)
       setLoaded(true)
     }
     load()
-  }, [id])
+  }, [id, router, supabase])
 
   function togglePost(post: Post) {
     setSelected(prev =>

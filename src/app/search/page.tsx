@@ -12,7 +12,7 @@ export default async function SearchPage({
   const { q } = await searchParams
   const query = q?.trim() ?? ''
   // Strip PostgREST filter special chars to prevent filter injection
-  const safeQuery = query.replace(/[(),]/g, '')
+  const safeQuery = query.replace(/[%,().:*"\\]/g, ' ').trim()
   const supabase = await createClient()
 
   const [{ data: topics }, { data: posts }, { data: people }] = query
@@ -39,7 +39,27 @@ export default async function SearchPage({
       ])
     : [{ data: [] }, { data: [] }, { data: [] }]
 
-  const hasResults = (topics?.length ?? 0) + (posts?.length ?? 0) + (people?.length ?? 0) > 0
+  const normalizedTopics = ((topics ?? []) as unknown as {
+    id: string
+    title: string
+    description: string | null
+    subject: { name: string; slug: string } | { name: string; slug: string }[] | null
+  }[]).map(topic => ({
+    ...topic,
+    subject: Array.isArray(topic.subject) ? topic.subject[0] ?? null : topic.subject,
+  }))
+
+  const normalizedPosts = ((posts ?? []) as unknown as {
+    id: string
+    title: string
+    type: string
+    topic: { id: string; title: string } | { id: string; title: string }[] | null
+  }[]).map(post => ({
+    ...post,
+    topic: Array.isArray(post.topic) ? post.topic[0] ?? null : post.topic,
+  }))
+
+  const hasResults = normalizedTopics.length + normalizedPosts.length + (people?.length ?? 0) > 0
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -89,14 +109,11 @@ export default async function SearchPage({
           </section>
         )}
 
-        {(topics?.length ?? 0) > 0 && (
+        {normalizedTopics.length > 0 && (
           <section className="mb-8">
             <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Topics</h2>
             <div className="flex flex-col gap-2">
-              {topics!.map((t: {
-                id: string; title: string; description: string | null
-                subject: { name: string; slug: string } | null
-              }) => (
+              {normalizedTopics.map(t => (
                 <Link
                   key={t.id}
                   href={`/topics/${t.id}`}
@@ -113,14 +130,11 @@ export default async function SearchPage({
           </section>
         )}
 
-        {(posts?.length ?? 0) > 0 && (
+        {normalizedPosts.length > 0 && (
           <section>
             <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Posts</h2>
             <div className="flex flex-col gap-2">
-              {posts!.map((p: {
-                id: string; title: string; type: string
-                topic: { id: string; title: string } | null
-              }) => (
+              {normalizedPosts.map(p => (
                 <Link
                   key={p.id}
                   href={`/posts/${p.id}`}

@@ -98,6 +98,15 @@ create table comments (
   created_at  timestamptz default now()
 );
 
+-- Common read-path indexes for feeds, profiles, topics, notifications, and graph.
+create index posts_topic_published_created_idx on posts (topic_id, is_draft, created_at desc);
+create index posts_author_draft_created_idx on posts (author_id, is_draft, created_at desc);
+create index topics_subject_created_idx on topics (subject_id, created_at desc);
+create index comments_post_created_idx on comments (post_id, created_at desc);
+create index topic_relations_from_idx on topic_relations (from_id);
+create index topic_relations_to_idx on topic_relations (to_id);
+create index follows_following_idx on follows (following_id);
+
 -- ─── LIKES ───────────────────────────────────────────────────────────────────
 create table likes (
   post_id    uuid not null references posts(id) on delete cascade,
@@ -186,11 +195,12 @@ create policy "Users can remove their bookmarks" on bookmarks for delete using (
 -- ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
 -- type: new_contribution (someone posted to a topic you created)
 --       new_comment      (someone commented on your post)
+--       new_post         (someone you follow/subscribed to published)
 create table notifications (
   id         uuid primary key default uuid_generate_v4(),
   user_id    uuid not null references profiles(id) on delete cascade,
   actor_id   uuid not null references profiles(id) on delete cascade,
-  type       text not null check (type in ('new_contribution', 'new_comment')),
+  type       text not null check (type in ('new_contribution', 'new_comment', 'new_post')),
   post_id    uuid references posts(id) on delete cascade,
   topic_id   uuid references topics(id) on delete cascade,
   read       boolean not null default false,
@@ -198,6 +208,8 @@ create table notifications (
 );
 
 alter table notifications enable row level security;
+create index notifications_user_created_idx on notifications (user_id, created_at desc);
+create index notifications_user_unread_idx on notifications (user_id, read, created_at desc);
 
 create policy "Users can view their own notifications" on notifications
   for select using (auth.uid() = user_id);
@@ -265,14 +277,9 @@ create table subscriptions (
   primary key (user_id, type, entity_id)
 );
 alter table subscriptions enable row level security;
+create index subscriptions_type_entity_idx on subscriptions (type, entity_id);
 create policy "Users can manage their own subscriptions" on subscriptions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- ─── NOTIFICATIONS: add new_post type ────────────────────────────────────────
--- For existing databases run:
---   alter table notifications drop constraint notifications_type_check;
---   alter table notifications add constraint notifications_type_check
---     check (type in ('new_contribution', 'new_comment', 'new_post'));
 
 -- ─── NOTIFICATION FAN-OUT TRIGGER ────────────────────────────────────────────
 -- Fires when a post is first published (is_draft flips false).
@@ -280,7 +287,7 @@ create policy "Users can manage their own subscriptions" on subscriptions
 create or replace function public.notify_new_post()
 returns trigger language plpgsql security definer as $$
 declare
-  v_subject_id uuid;
+  v_subject_id integer;
 begin
   if not (
     (TG_OP = 'INSERT' and NEW.is_draft = false) or
@@ -303,7 +310,7 @@ begin
   select distinct target_id, NEW.author_id, 'new_post', NEW.id, NEW.topic_id
   from (
     select user_id as target_id from subscriptions
-      where type = 'topic' and entity_id = NEW.topic_id
+      where type = 'topic' and entity_id = NEW.topic_id::text
     union
     select user_id from subscriptions
       where type = 'subject' and entity_id = v_subject_id::text
@@ -329,6 +336,8 @@ create table ai_usage (
   calls   integer not null default 0,
   primary key (user_id, date)
 );
+
+alter table ai_usage enable row level security;
 
 -- Atomic check-and-increment: returns true if the call is allowed, false if over limit.
 -- security definer so it can bypass RLS and update the row unconditionally.

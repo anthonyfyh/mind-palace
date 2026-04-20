@@ -42,6 +42,8 @@ export function Editor({ content, onChange, placeholder = 'Write your explanatio
       StarterKit,
       MermaidExtension,
       Placeholder.configure({ placeholder }),
+      // The mention extension reads topicsRef only from suggestion callbacks, not during render.
+      // eslint-disable-next-line react-hooks/refs
       Mention.configure({
         HTMLAttributes: { class: 'topic-mention' },
         renderLabel({ options, node }) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { Node, mergeAttributes } from '@tiptap/core'
-import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
+import { ReactNodeViewRenderer, NodeViewWrapper, type ReactNodeViewProps } from '@tiptap/react'
 import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 
@@ -9,13 +9,13 @@ mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'stric
 
 let counter = 0
 
-function MermaidNodeView({ node }: { node: { attrs: { code: string } } }) {
+function MermaidNodeView({ node }: ReactNodeViewProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [error, setError] = useState(false)
   const id = useRef(`mermaid-${++counter}`)
+  const code = typeof node.attrs.code === 'string' ? node.attrs.code : ''
 
   useEffect(() => {
-    const code = node.attrs.code
     if (!ref.current || !code) return
     setError(false)
 
@@ -29,13 +29,13 @@ function MermaidNodeView({ node }: { node: { attrs: { code: string } } }) {
         }
       })
       .catch(() => setError(true))
-  }, [node.attrs.code])
+  }, [code])
 
   return (
     <NodeViewWrapper>
       <div className="my-4 rounded-lg border border-neutral-100 bg-neutral-50 p-4 overflow-x-auto" data-type="mermaid">
         {error ? (
-          <pre className="text-xs text-red-500 whitespace-pre-wrap">{node.attrs.code}</pre>
+          <pre className="text-xs text-red-500 whitespace-pre-wrap">{code}</pre>
         ) : (
           <div ref={ref} />
         )}
