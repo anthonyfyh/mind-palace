@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Avatar } from '@/components/avatar'
 import { Button } from '@/components/ui/button'
+import { TypeBadge } from '@/components/type-badge'
 
 const SUBJECT_COLORS: Record<string, string> = {
   'productivity':     '#6366f1',
@@ -111,11 +112,11 @@ export default async function Home() {
               <Link
                 key={s.slug}
                 href={`/browse?subject=${s.slug}`}
-                className="flex flex-col justify-between rounded-xl border border-neutral-200 px-5 py-4 hover:border-neutral-400 transition-colors"
+                className="flex flex-col rounded-xl border border-neutral-200 overflow-hidden hover:border-neutral-400 hover:shadow-sm transition-all"
               >
-                <div className="w-2.5 h-2.5 rounded-full mb-4" style={{ backgroundColor: color }} />
-                <div>
-                  <p className="text-sm font-medium text-neutral-900">{s.name}</p>
+                <div className="h-1" style={{ backgroundColor: color }} />
+                <div className="px-5 py-4">
+                  <p className="text-sm font-semibold text-neutral-900">{s.name}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">{count} {count === 1 ? 'topic' : 'topics'}</p>
                 </div>
               </Link>
@@ -140,10 +141,15 @@ export default async function Home() {
               >
                 <span className="text-sm font-mono text-neutral-200 w-5 shrink-0">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-900 truncate">{p.title}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    {p.topic?.title} · {p.author?.display_name ?? p.author?.username}
-                  </p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-sm font-medium text-neutral-900 truncate">{p.title}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TypeBadge type={p.type} />
+                    <p className="text-xs text-neutral-400 truncate">
+                      {p.topic?.title} · {p.author?.display_name ?? p.author?.username}
+                    </p>
+                  </div>
                 </div>
                 {p.likeCount > 0 && (
                   <span className="text-xs text-neutral-400 shrink-0">♥ {p.likeCount}</span>

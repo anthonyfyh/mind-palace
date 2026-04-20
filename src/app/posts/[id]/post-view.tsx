@@ -12,6 +12,7 @@ import { BookmarkButton } from '@/components/bookmark-button'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractMentionIds } from '@/lib/extract-mentions'
+import { TypeBadge } from '@/components/type-badge'
 
 const TYPE_LABELS: Record<string, string> = {
   solution: 'Solution',
@@ -187,9 +188,7 @@ export function PostView({ post, comments, userId, allTopics, likeCount, initial
         /* ── VIEW MODE ── */
         <>
           <div className="mb-3">
-            <span className="text-xs font-medium uppercase tracking-wider text-neutral-400 border border-neutral-200 rounded px-2 py-0.5">
-              {TYPE_LABELS[postType] ?? postType}
-            </span>
+            <TypeBadge type={postType} />
           </div>
 
           <h1 className="text-3xl font-semibold tracking-tight mb-3">{title}</h1>
@@ -235,9 +234,7 @@ export function PostView({ post, comments, userId, allTopics, likeCount, initial
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-                          {TYPE_LABELS_MAP[rp.type] ?? rp.type}
-                        </span>
+                        <TypeBadge type={rp.type} />
                       </div>
                       <p className="text-sm font-medium text-neutral-900">{rp.title}</p>
                       <p className="text-xs text-neutral-400 mt-0.5">

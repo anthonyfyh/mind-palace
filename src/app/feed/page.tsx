@@ -3,10 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Avatar } from '@/components/avatar'
-
-const TYPE_LABELS: Record<string, string> = {
-  solution: 'Solution', framework: 'Framework', concept: 'Concept', process: 'Process',
-}
+import { TypeBadge } from '@/components/type-badge'
 
 export default async function FeedPage() {
   const supabase = await createClient()
@@ -126,9 +123,7 @@ export default async function FeedPage() {
                   </div>
 
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-                      {TYPE_LABELS[post.type] ?? post.type}
-                    </span>
+                    <TypeBadge type={post.type} />
                     {post.topic?.subject && (
                       <span className="text-xs text-neutral-400">{post.topic.subject.name}</span>
                     )}

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Avatar } from '@/components/avatar'
 import { SubscribeButton } from '@/components/subscribe-button'
+import { TypeBadge } from '@/components/type-badge'
 
 const SUBJECT_COLORS: Record<string, string> = {
   'productivity':     '#6366f1',
@@ -12,12 +13,6 @@ const SUBJECT_COLORS: Record<string, string> = {
   'life-skills':      '#8b5cf6',
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  solution:  'Solution',
-  framework: 'Framework',
-  concept:   'Concept',
-  process:   'Process',
-}
 
 function extractPlainText(raw: string | null): string {
   if (!raw) return ''
@@ -342,29 +337,29 @@ export default async function BrowsePage({
                     <Link
                       key={t.id}
                       href={`/topics/${t.id}`}
-                      className="flex flex-col rounded-xl border border-neutral-200 p-5 hover:border-neutral-400 transition-colors"
+                      className="flex flex-col rounded-xl border border-neutral-200 overflow-hidden hover:border-neutral-400 hover:shadow-sm transition-all"
                     >
-                      <div className="w-2 h-2 rounded-full mb-3" style={{ backgroundColor: subjectColor }} />
-                      <h3 className="text-sm font-semibold text-neutral-900 leading-snug mb-2">{t.title}</h3>
-                      {t.description && (
-                        <p className="text-xs text-neutral-500 line-clamp-2 mb-3 flex-1">
-                          {extractPlainText(t.description)}
-                        </p>
-                      )}
-                      <div className="mt-auto">
-                        <div className="flex gap-3 text-xs text-neutral-400 mb-2">
-                          <span>{t.postCount} {t.postCount === 1 ? 'contribution' : 'contributions'}</span>
-                          <span>{t.contributorCount} {t.contributorCount === 1 ? 'contributor' : 'contributors'}</span>
-                        </div>
-                        {t.types.length > 0 && (
-                          <div className="flex gap-1 flex-wrap">
-                            {t.types.map(type => (
-                              <span key={type} className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-                                {TYPE_LABELS[type] ?? type}
-                              </span>
-                            ))}
-                          </div>
+                      <div className="h-1" style={{ backgroundColor: subjectColor }} />
+                      <div className="flex flex-col flex-1 p-5">
+                        <h3 className="text-base font-semibold text-neutral-900 leading-snug mb-2">{t.title}</h3>
+                        {t.description && (
+                          <p className="text-sm text-neutral-500 line-clamp-2 mb-4 flex-1">
+                            {extractPlainText(t.description)}
+                          </p>
                         )}
+                        <div className="mt-auto">
+                          <div className="flex gap-3 text-xs text-neutral-400 mb-3">
+                            <span>{t.postCount} {t.postCount === 1 ? 'contribution' : 'contributions'}</span>
+                            <span>{t.contributorCount} {t.contributorCount === 1 ? 'contributor' : 'contributors'}</span>
+                          </div>
+                          {t.types.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {t.types.map(type => (
+                                <TypeBadge key={type} type={type} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </Link>
                   ))}
@@ -418,9 +413,7 @@ export default async function BrowsePage({
                           {t.types.length > 0 && (
                             <div className="flex gap-1 mt-2 flex-wrap">
                               {t.types.map(type => (
-                                <span key={type} className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-                                  {TYPE_LABELS[type] ?? type}
-                                </span>
+                                <TypeBadge key={type} type={type} />
                               ))}
                             </div>
                           )}

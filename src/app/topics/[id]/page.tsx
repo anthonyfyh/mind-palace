@@ -5,6 +5,7 @@ import { Nav } from '@/components/nav'
 import { TopicHeader } from './topic-header'
 import { TopicDigest } from '@/components/topic-digest'
 import { SubscribeButton } from '@/components/subscribe-button'
+import { TypeBadge, TYPE_LABELS } from '@/components/type-badge'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -25,13 +26,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: { title: topic.title, description, images: [{ url: '/logo.png', width: 1080, height: 1080 }] },
     twitter: { card: 'summary', title: topic.title, description, images: ['/logo.png'] },
   }
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  solution:  'Solution',
-  framework: 'Framework',
-  concept:   'Concept',
-  process:   'Process',
 }
 
 const TYPE_ORDER = ['solution', 'framework', 'concept', 'process']
@@ -128,11 +122,9 @@ export default async function TopicPage({
             {uniqueContributors === 1 ? 'contributor' : 'contributors'}
           </span>
           {typesPresent.length > 0 && (
-            <div className="flex gap-1 ml-auto">
+            <div className="flex gap-1 ml-auto flex-wrap">
               {typesPresent.map(type => (
-                <span key={type} className="text-xs border border-neutral-200 rounded px-2 py-0.5 text-neutral-400">
-                  {TYPE_LABELS[type] ?? type}
-                </span>
+                <TypeBadge key={type} type={type} />
               ))}
             </div>
           )}
@@ -201,9 +193,7 @@ export default async function TopicPage({
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-                        {TYPE_LABELS[post.type] ?? post.type}
-                      </span>
+                      <TypeBadge type={post.type} />
                     </div>
                     <h3 className="text-base font-medium text-neutral-900">{post.title}</h3>
                     <p className="text-sm text-neutral-400 mt-0.5">

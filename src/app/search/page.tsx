@@ -2,13 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Nav } from '@/components/nav'
 import { Avatar } from '@/components/avatar'
-
-const TYPE_LABELS: Record<string, string> = {
-  solution: 'Solution',
-  framework: 'Framework',
-  concept: 'Concept',
-  process: 'Process',
-}
+import { TypeBadge } from '@/components/type-badge'
 
 export default async function SearchPage({
   searchParams,
@@ -133,9 +127,7 @@ export default async function SearchPage({
                   className="block border border-neutral-200 rounded-lg px-4 py-3 hover:border-neutral-400 transition-colors"
                 >
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs text-neutral-400 border border-neutral-200 rounded px-1.5 py-0.5">
-                      {TYPE_LABELS[p.type] ?? p.type}
-                    </span>
+                    <TypeBadge type={p.type} />
                     <span className="text-xs text-neutral-400">{p.topic?.title}</span>
                   </div>
                   <p className="text-sm font-medium text-neutral-900">{p.title}</p>

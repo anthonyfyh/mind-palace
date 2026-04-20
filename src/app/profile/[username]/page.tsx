@@ -5,6 +5,7 @@ import { Nav } from '@/components/nav'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/avatar'
 import { FollowButton } from '@/components/follow-button'
+import { TypeBadge } from '@/components/type-badge'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
@@ -27,13 +28,6 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   }
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  solution:  'Solution',
-  framework: 'Framework',
-  concept:   'Concept',
-  process:   'Process',
-}
-
 const SUBJECT_ORDER = ['Productivity', 'Personal Finance', 'Career', 'Economics', 'Life Skills']
 
 type PostRow = {
@@ -46,28 +40,27 @@ function PostCard({ post }: { post: PostRow }) {
   return (
     <Link
       href={`/posts/${post.id}`}
-      className="block border border-neutral-200 rounded-lg px-5 py-4 hover:border-neutral-400 transition-colors"
+      className="flex items-start gap-4 border border-neutral-200 rounded-lg px-5 py-4 hover:border-neutral-400 hover:shadow-sm transition-all"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-xs border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-400">
-              {TYPE_LABELS[post.type] ?? post.type}
-            </span>
-          </div>
-          <h3 className="text-base font-medium text-neutral-900">{post.title}</h3>
-          {post.topic && (
-            <p className="text-xs text-neutral-400 mt-1">on: {post.topic.title}</p>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1.5">
+          <TypeBadge type={post.type} />
+          {post.is_draft && (
+            <span className="text-xs text-amber-500 font-medium">Draft</span>
           )}
         </div>
-        <div className="shrink-0 flex flex-col items-end gap-1">
-          <span className="text-xs text-neutral-400">
-            {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
-          {!!post.likeCount && (
-            <span className="text-xs text-neutral-400">♥ {post.likeCount}</span>
-          )}
-        </div>
+        <h3 className="text-sm font-semibold text-neutral-900 leading-snug">{post.title}</h3>
+        {post.topic && (
+          <p className="text-xs text-neutral-400 mt-1">{post.topic.title}</p>
+        )}
+      </div>
+      <div className="shrink-0 flex flex-col items-end gap-1 pt-0.5">
+        <span className="text-xs text-neutral-400">
+          {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+        {!!post.likeCount && (
+          <span className="text-xs text-neutral-400">♥ {post.likeCount}</span>
+        )}
       </div>
     </Link>
   )
