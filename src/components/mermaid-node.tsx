@@ -5,7 +5,7 @@ import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 
-mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' })
+mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' })
 
 let counter = 0
 

@@ -17,6 +17,8 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams
   const query = q?.trim() ?? ''
+  // Strip PostgREST filter special chars to prevent filter injection
+  const safeQuery = query.replace(/[(),]/g, '')
   const supabase = await createClient()
 
   const [{ data: topics }, { data: posts }, { data: people }] = query
@@ -24,20 +26,20 @@ export default async function SearchPage({
         supabase
           .from('topics')
           .select('id, title, description, subject:subjects(name, slug)')
-          .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+          .or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`)
           .order('title')
           .limit(10),
         supabase
           .from('posts')
           .select('id, title, type, topic:topics!posts_topic_id_fkey(id, title)')
-          .ilike('title', `%${query}%`)
+          .ilike('title', `%${safeQuery}%`)
           .eq('is_draft', false)
           .order('title')
           .limit(10),
         supabase
           .from('profiles')
           .select('id, username, display_name, bio, avatar_url')
-          .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+          .or(`username.ilike.%${safeQuery}%,display_name.ilike.%${safeQuery}%`)
           .order('username')
           .limit(8),
       ])

@@ -164,12 +164,6 @@ create policy "Comments are viewable by everyone" on comments for select using (
 create policy "Authenticated users can comment" on comments for insert with check (auth.uid() = author_id);
 create policy "Authors can delete their own comments" on comments for delete using (auth.uid() = author_id);
 
--- Bookmarks: private — only owner can see and manage
-alter table bookmarks enable row level security;
-create policy "Users can view their own bookmarks" on bookmarks for select using (auth.uid() = user_id);
-create policy "Users can bookmark posts" on bookmarks for insert with check (auth.uid() = user_id);
-create policy "Users can remove their bookmarks" on bookmarks for delete using (auth.uid() = user_id);
-
 -- Likes: public read, users can like/unlike their own rows
 create policy "Likes are viewable by everyone" on likes for select using (true);
 create policy "Authenticated users can like" on likes for insert with check (auth.uid() = user_id);
@@ -182,6 +176,12 @@ create table bookmarks (
   created_at timestamptz default now(),
   primary key (post_id, user_id)
 );
+
+-- Bookmarks: private — only owner can see and manage
+alter table bookmarks enable row level security;
+create policy "Users can view their own bookmarks" on bookmarks for select using (auth.uid() = user_id);
+create policy "Users can bookmark posts" on bookmarks for insert with check (auth.uid() = user_id);
+create policy "Users can remove their bookmarks" on bookmarks for delete using (auth.uid() = user_id);
 
 -- ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
 -- type: new_contribution (someone posted to a topic you created)

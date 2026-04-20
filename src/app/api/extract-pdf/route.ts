@@ -1,9 +1,14 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@/lib/supabase/server'
 
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized.' }, { status: 401 })
+
   const formData = await req.formData()
   const file = formData.get('pdf') as File | null
 
@@ -16,6 +21,14 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = await file.arrayBuffer()
+
+  // Validate magic bytes — browser MIME type is untrustworthy
+  const magic = new Uint8Array(buffer.slice(0, 5))
+  const isPdf = magic[0] === 0x25 && magic[1] === 0x50 && magic[2] === 0x44 && magic[3] === 0x46 && magic[4] === 0x2D
+  if (!isPdf) {
+    return Response.json({ error: 'File does not appear to be a valid PDF.' }, { status: 400 })
+  }
+
   const base64 = Buffer.from(buffer).toString('base64')
 
   const response = await client.messages.create({

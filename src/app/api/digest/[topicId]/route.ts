@@ -26,6 +26,9 @@ export async function GET(
   const { topicId } = await params
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return new Response('Unauthorized.', { status: 401 })
+
   const [{ data: topic }, { data: posts }] = await Promise.all([
     supabase.from('topics').select('title').eq('id', topicId).single(),
     supabase
