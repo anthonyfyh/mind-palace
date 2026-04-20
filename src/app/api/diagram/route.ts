@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
+import { checkAiQuota } from '@/lib/ai-quota'
 
 const client = new Anthropic()
 
@@ -8,6 +9,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized.' }, { status: 401 })
+
+  const allowed = await checkAiQuota(supabase, user.id)
+  if (!allowed) return Response.json({ error: 'Daily AI limit reached. Try again tomorrow.' }, { status: 429 })
 
   const { description } = await req.json()
 

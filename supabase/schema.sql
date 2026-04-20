@@ -253,3 +253,30 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ─── AI USAGE QUOTA ──────────────────────────────────────────────────────────
+create table ai_usage (
+  user_id uuid not null references profiles(id) on delete cascade,
+  date    date not null default current_date,
+  calls   integer not null default 0,
+  primary key (user_id, date)
+);
+
+-- Atomic check-and-increment: returns true if the call is allowed, false if over limit.
+-- security definer so it can bypass RLS and update the row unconditionally.
+create or replace function public.check_and_increment_ai_usage(p_user_id uuid, p_limit int default 20)
+returns boolean
+language plpgsql security definer as $$
+declare v_calls int;
+begin
+  insert into ai_usage (user_id, date, calls)
+  values (p_user_id, current_date, 0)
+  on conflict (user_id, date) do nothing;
+
+  select calls into v_calls from ai_usage where user_id = p_user_id and date = current_date;
+  if v_calls >= p_limit then return false; end if;
+
+  update ai_usage set calls = calls + 1 where user_id = p_user_id and date = current_date;
+  return true;
+end;
+$$;
